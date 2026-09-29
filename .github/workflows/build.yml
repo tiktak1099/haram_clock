@@ -19,7 +19,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Lightweight Native Project
+      - name: Generate Custom Sound Native Project
         run: |
           mkdir -p app/src/main/java/com/example/hourlychime
 
@@ -49,7 +49,7 @@ jobs:
           }
           EOF
 
-          # app/build.gradle (بدون وابستگی اضافه و کاملاً مستقل)
+          # app/build.gradle
           cat << 'EOF' > app/build.gradle
           plugins {
               id 'com.android.application'
@@ -64,8 +64,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 1
-                  versionName "1.0"
+                  versionCode 2
+                  versionName "1.1"
               }
 
               buildTypes {
@@ -91,11 +91,12 @@ jobs:
               <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
               <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
               <uses-permission android:name="android.permission.WAKE_LOCK" />
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
               <application
                   android:allowBackup="true"
                   android:icon="@android:drawable/ic_lock_idle_alarm"
-                  android:label="زنگ ساعتی"
+                  android:label="زنگ ساعتی حرم"
                   android:supportsRtl="true"
                   android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
@@ -126,7 +127,7 @@ jobs:
           </manifest>
           EOF
 
-          # MainActivity.kt با Activity خالص اندروید
+          # MainActivity.kt
           cat << 'EOF' > app/src/main/java/com/example/hourlychime/MainActivity.kt
           package com.example.hourlychime
 
@@ -141,12 +142,17 @@ jobs:
           import android.media.AudioAttributes
           import android.media.AudioFormat
           import android.media.AudioTrack
+          import android.media.MediaPlayer
+          import android.net.Uri
           import android.os.Build
           import android.os.Bundle
           import android.view.Gravity
+          import android.widget.AdapterView
+          import android.widget.ArrayAdapter
           import android.widget.Button
           import android.widget.CheckBox
           import android.widget.LinearLayout
+          import android.widget.Spinner
           import android.widget.TextView
           import android.widget.Toast
           import java.util.Calendar
@@ -154,33 +160,36 @@ jobs:
           import kotlin.math.sin
 
           class MainActivity : Activity() {
+
+              private val PICK_AUDIO_REQUEST = 999
+
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
                   val prefs = getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
 
                   val root = LinearLayout(this).apply {
                       orientation = LinearLayout.VERTICAL
-                      gravity = Gravity.CENTER
+                      gravity = Gravity.CENTER_HORIZONTAL
                       setBackgroundColor(Color.parseColor("#0F172A"))
-                      setPadding(50, 50, 50, 50)
+                      setPadding(40, 50, 40, 50)
                   }
 
                   val title = TextView(this).apply {
-                      text = "ساعت زنگ‌دار ساعتی"
+                      text = "ساعت زنگ‌دار حرم"
                       textSize = 22f
                       setTextColor(Color.parseColor("#38BDF8"))
                       typeface = Typeface.DEFAULT_BOLD
                       gravity = Gravity.CENTER
-                      setPadding(0, 0, 0, 30)
+                      setPadding(0, 0, 0, 20)
                   }
 
                   val statusText = TextView(this).apply {
                       val active = prefs.getBoolean("is_alarm_active", false)
-                      text = if (active) "وضعیت: روشن (نواختن سر ساعت)" else "وضعیت: خاموش"
+                      text = if (active) "وضعیت: فعال (پخش سر ساعت)" else "وضعیت: غیرفعال"
                       textSize = 15f
                       setTextColor(if (active) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8"))
                       gravity = Gravity.CENTER
-                      setPadding(0, 0, 0, 40)
+                      setPadding(0, 0, 0, 30)
                   }
 
                   val btnToggle = Button(this).apply {
@@ -198,16 +207,16 @@ jobs:
                               HourlyChimeReceiver.scheduleNextChime(this@MainActivity)
                               text = "خاموش کردن زنگ"
                               setBackgroundColor(Color.parseColor("#DC2626"))
-                              statusText.text = "وضعیت: روشن (نواختن سر ساعت)"
+                              statusText.text = "وضعیت: فعال (پخش سر ساعت)"
                               statusText.setTextColor(Color.parseColor("#4ADE80"))
                               Toast.makeText(this@MainActivity, "زنگ ساعتی فعال شد", Toast.LENGTH_SHORT).show()
                           } else {
                               HourlyChimeReceiver.cancelChime(this@MainActivity)
                               text = "روشن کردن زنگ ساعتی"
                               setBackgroundColor(Color.parseColor("#0284C7"))
-                              statusText.text = "وضعیت: خاموش"
+                              statusText.text = "وضعیت: غیرفعال"
                               statusText.setTextColor(Color.parseColor("#94A3B8"))
-                              Toast.makeText(this@MainActivity, "زنگ خاموش شد", Toast.LENGTH_SHORT).show()
+                              Toast.makeText(this@MainActivity, "زنگ غیرفعال شد", Toast.LENGTH_SHORT).show()
                           }
                       }
                   }
@@ -216,14 +225,47 @@ jobs:
                       text = "حالت بی‌صدا در شب (۲۳:۰۰ الی ۰۷:۰۰)"
                       setTextColor(Color.parseColor("#E2E8F0"))
                       isChecked = prefs.getBoolean("quiet_enabled", true)
-                      setPadding(0, 30, 0, 20)
+                      setPadding(0, 20, 0, 20)
                       setOnCheckedChangeListener { _, checked ->
                           prefs.edit().putBoolean("quiet_enabled", checked).apply()
                       }
                   }
 
+                  val soundLabel = TextView(this).apply {
+                      text = "انتخاب نوع صدای زنگ:"
+                      setTextColor(Color.parseColor("#94A3B8"))
+                      textSize = 14f
+                      setPadding(0, 20, 0, 10)
+                  }
+
+                  val soundOptions = arrayOf("زنگ ناقوس حرم (عمیق)", "ساعت پاندولی کلاسیک", "بیپ دیجیتال", "فایل صوتی دلخواه از گوشی")
+                  val spinner = Spinner(this).apply {
+                      val adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, soundOptions)
+                      setAdapter(adapter)
+                      setSelection(prefs.getInt("sound_type", 0))
+                      onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                          override fun onItemSelected(p0: AdapterView<*>?, p1: android.view.View?, pos: Int, id: Long) {
+                              prefs.edit().putInt("sound_type", pos).apply()
+                          }
+                          override fun onNothingSelected(p0: AdapterView<*>?) {}
+                      }
+                  }
+
+                  val btnPickAudio = Button(this).apply {
+                      text = "انتخاب فایل صوتی از حافظه..."
+                      setBackgroundColor(Color.parseColor("#1E293B"))
+                      setTextColor(Color.parseColor("#38BDF8"))
+                      setOnClickListener {
+                          val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                              addCategory(Intent.CATEGORY_OPENABLE)
+                              type = "audio/*"
+                          }
+                          startActivityForResult(intent, PICK_AUDIO_REQUEST)
+                      }
+                  }
+
                   val btnTest = Button(this).apply {
-                      text = "تست زنگ ساعت جاری"
+                      text = "تست صدای ساعت جاری"
                       setBackgroundColor(Color.parseColor("#334155"))
                       setTextColor(Color.parseColor("#CBD5E1"))
                       setOnClickListener {
@@ -231,8 +273,8 @@ jobs:
                               0 -> 12
                               else -> h
                           }
-                          Toast.makeText(this@MainActivity, "پخش $count ضربه زنگ...", Toast.LENGTH_SHORT).show()
-                          HourlyChimeReceiver.playBellSequence(count)
+                          Toast.makeText(this@MainActivity, "پخش $count ضربه با صدای انتخابی...", Toast.LENGTH_SHORT).show()
+                          HourlyChimeReceiver.playChime(this@MainActivity, count)
                       }
                   }
 
@@ -240,8 +282,29 @@ jobs:
                   root.addView(statusText)
                   root.addView(btnToggle)
                   root.addView(chkQuiet)
+                  root.addView(soundLabel)
+                  root.addView(spinner)
+                  root.addView(btnPickAudio)
                   root.addView(btnTest)
+
                   setContentView(root)
+              }
+
+              override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+                  super.onActivityResult(requestCode, resultCode, data)
+                  if (requestCode == PICK_AUDIO_REQUEST && resultCode == Activity.RESULT_OK) {
+                      data?.data?.let { uri ->
+                          try {
+                              contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                          } catch (_: Exception) {}
+                          val prefs = getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
+                          prefs.edit()
+                              .putString("custom_audio_uri", uri.toString())
+                              .putInt("sound_type", 3)
+                              .apply()
+                          Toast.makeText(this, "فایل صوتی با موفقیت تنظیم شد", Toast.LENGTH_SHORT).show()
+                      }
+                  }
               }
           }
 
@@ -253,7 +316,7 @@ jobs:
                           0 -> 12
                           else -> h
                       }
-                      playBellSequence(count)
+                      playChime(context, count)
                   }
                   scheduleNextChime(context)
               }
@@ -267,16 +330,36 @@ jobs:
               }
 
               companion object {
-                  fun playBellSequence(totalRounds: Int) {
+                  fun playChime(context: Context, totalRounds: Int) {
+                      val prefs = context.getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
+                      val type = prefs.getInt("sound_type", 0)
+                      val uriStr = prefs.getString("custom_audio_uri", null)
+
                       thread {
                           for (i in 0 until totalRounds) {
-                              playTone()
-                              Thread.sleep(1200)
+                              if (type == 3 && uriStr != null) {
+                                  try {
+                                      val mp = MediaPlayer.create(context, Uri.parse(uriStr))
+                                      mp?.start()
+                                      Thread.sleep((mp?.duration?.toLong() ?: 1500L).coerceAtLeast(1000L))
+                                      mp?.release()
+                                  } catch (e: Exception) {
+                                      playSynthesizedTone(587.33, 3.8)
+                                      Thread.sleep(1200)
+                                  }
+                              } else {
+                                  when (type) {
+                                      1 -> playSynthesizedTone(440.0, 2.5) // پاندولی بم
+                                      2 -> playSynthesizedTone(880.0, 8.0) // دیجیتال
+                                      else -> playSynthesizedTone(587.33, 3.8) // ناقوس حرم
+                                  }
+                                  Thread.sleep(1200)
+                              }
                           }
                       }
                   }
 
-                  private fun playTone() {
+                  private fun playSynthesizedTone(freq: Double, decay: Double) {
                       val sampleRate = 44100
                       val duration = 1.1
                       val numSamples = (duration * sampleRate).toInt()
@@ -284,8 +367,8 @@ jobs:
 
                       for (i in 0 until numSamples) {
                           val t = i.toDouble() / sampleRate
-                          val envelope = Math.exp(-3.8 * t)
-                          val sample = sin(2 * Math.PI * 587.33 * t) * envelope
+                          val envelope = Math.exp(-decay * t)
+                          val sample = sin(2 * Math.PI * freq * t) * envelope
                           buffer[i] = (sample * 32767).toInt().toShort()
                       }
 
@@ -309,7 +392,7 @@ jobs:
 
                       track.write(buffer, 0, numSamples)
                       track.play()
-                      Thread.sleep(1200)
+                      Thread.sleep(1100)
                       track.release()
                   }
 
@@ -368,5 +451,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HourlyChime-App-APK
+          name: HourlyChime-CustomSound-APK
           path: app/build/outputs/apk/debug/*.apk
