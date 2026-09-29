@@ -24,16 +24,15 @@ jobs:
         with:
           gradle-version: '8.2'
 
-      - name: Download and Build Source
+      - name: Generate Code and Build
         run: |
-          curl -sL "https://gist.githubusercontent.com/morteza-dev/336ddf13a0e698889b910e53a31c4f52/raw/setup.sh" -o setup.sh || true
-          
-          # ساخت مستقیم پروژه
           mkdir -p app/src/main/java/com/example/hourlychime
           mkdir -p app/src/main/res/drawable
 
-          echo 'rootProject.name = "HourlyChimeApp"' > settings.gradle
-          echo 'include ":app"' >> settings.gradle
+          cat << 'EOF' > settings.gradle
+          rootProject.name = "HourlyChimeApp"
+          include ':app'
+          EOF
 
           cat << 'EOF' > build.gradle
           buildscript {
@@ -58,8 +57,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 12
-                  versionName "2.1"
+                  versionCode 13
+                  versionName "2.0"
               }
               buildTypes { release { minifyEnabled false } }
               compileOptions {
@@ -70,25 +69,74 @@ jobs:
           }
           EOF
 
-          # آیکون ساعت حرم با پس زمینه سفید
+          # آیکون ساعت حرم - الهام‌گرفته دقیق از عکس با زمینه سفید
           cat << 'EOF' > app/src/main/res/drawable/ic_launcher_haram.xml
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
               android:width="108dp" android:height="108dp"
               android:viewportWidth="108" android:viewportHeight="108">
+              <!-- پس‌زمینه سفید -->
               <path android:pathData="M0,0h108v108h-108z" android:fillColor="#FFFFFF" />
-              <path android:pathData="M54,4 L54,16" android:strokeColor="#64748B" android:strokeWidth="1.8" />
-              <path android:pathData="M54,6m-2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0" android:fillColor="#475569" />
-              <path android:pathData="M34,36 C34,20 44,15 54,15 C64,15 74,20 74,36 Z" android:fillColor="#0EA5E9" />
-              <path android:pathData="M40,32 C48,22 60,22 68,32 M44,22 C50,30 58,30 64,22" android:strokeColor="#FFFFFF" android:strokeWidth="1.2" android:fillColor="#00000000" />
-              <path android:pathData="M33,36 L75,36 L73,39 L35,39 Z" android:fillColor="#D97706" />
-              <path android:pathData="M35,39 L73,39 L71,55 L37,55 Z" android:fillColor="#1E3A8A" />
-              <path android:pathData="M27,55 L81,55 L79,59 L29,59 Z" android:fillColor="#E2E8F0" />
-              <path android:pathData="M36,59 L72,59 L68,88 L40,88 Z" android:fillColor="#1D4ED8" />
-              <path android:pathData="M54,75m-12,0a12,12 0,1,1 24,0a12,12 0,1,1 -24,0" android:fillColor="#FFFBEB" />
-              <path android:pathData="M54,75m-12,0a12,12 0,1,1 24,0a12,12 0,1,1 -24,0" android:strokeColor="#D97706" android:strokeWidth="2" />
-              <path android:pathData="M54,75 L54,67" android:strokeColor="#0F172A" android:strokeWidth="2" />
-              <path android:pathData="M54,75 L61,75" android:strokeColor="#0F172A" android:strokeWidth="1.8" />
-              <path android:pathData="M25,88 L83,88 L77,98 L31,98 Z" android:fillColor="#0284C7" />
+
+              <!-- میله و گلدسته بالای گنبد -->
+              <path android:pathData="M54,2 L54,16" android:strokeColor="#64748B" android:strokeWidth="1.8" />
+              <path android:pathData="M54,4m-2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0" android:fillColor="#475569" />
+              <path android:pathData="M54,8m-2.5,0a2.5,2.5 0,1,1 5,0a2.5,2.5 0,1,1 -5,0" android:fillColor="#475569" />
+
+              <!-- گنبد فیروزه‌ای پیازی -->
+              <path android:pathData="M32,38 C32,18 42,14 54,14 C66,14 76,18 76,38 Z" android:fillColor="#0284C7" />
+              <!-- نقوش اسلیمی و گره‌چینی روی گنبد -->
+              <path android:pathData="M38,34 C46,20 62,20 70,34 M44,20 C50,30 58,30 64,20" android:strokeColor="#FFFFFF" android:strokeWidth="1.4" android:fillColor="#00000000" />
+
+              <!-- طوق طلایی گردن گنبد -->
+              <path android:pathData="M31,38 L77,38 L75,41 L33,41 Z" android:fillColor="#D97706" />
+
+              <!-- اتاقک اذان‌گو -->
+              <path android:pathData="M33,41 L75,41 L73,56 L35,56 Z" android:fillColor="#1E3A8A" />
+              <!-- بلندگوهای حرم در طرفین -->
+              <path android:pathData="M27,47 L33,45 L33,52 Z" android:fillColor="#64748B" />
+              <path android:pathData="M81,47 L75,45 L75,52 Z" android:fillColor="#64748B" />
+
+              <!-- بالکن بالایی با نرده مشبک سفید -->
+              <path android:pathData="M25,56 L83,56 L81,60 L27,60 Z" android:fillColor="#F1F5F9" />
+              <path android:pathData="M25,56 L83,56" android:strokeColor="#94A3B8" android:strokeWidth="1.5" />
+
+              <!-- بدنه ۸ ضلعی ساعت با کاشی‌های لاجوردی -->
+              <path android:pathData="M35,60 L73,60 L69,89 L39,89 Z" android:fillColor="#1D4ED8" />
+
+              <!-- پنجره‌های باریک طرفین ساعت -->
+              <path android:pathData="M38,69 L42,69 L42,82 L38,82 Z" android:fillColor="#BAE6FD" />
+              <path android:pathData="M66,69 L70,69 L70,82 L66,82 Z" android:fillColor="#BAE6FD" />
+
+              <!-- صفحه گرد ساعت سفید -->
+              <path android:pathData="M54,76m-12,0a12,12 0,1,1 24,0a12,12 0,1,1 -24,0" android:fillColor="#FFFFFF" />
+              <path android:pathData="M54,76m-12,0a12,12 0,1,1 24,0a12,12 0,1,1 -24,0" android:strokeColor="#F59E0B" android:strokeWidth="2.2" />
+
+              <!-- عقربه‌ها -->
+              <path android:pathData="M54,76 L54,68" android:strokeColor="#0F172A" android:strokeWidth="2.2" android:strokeLineCap="round" />
+              <path android:pathData="M54,76 L62,76" android:strokeColor="#0F172A" android:strokeWidth="2" android:strokeLineCap="round" />
+              <path android:pathData="M54,76m-1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0" android:fillColor="#B45309" />
+
+              <!-- بالکن پایینی و مقرنس‌ها -->
+              <path android:pathData="M23,89 L85,89 L79,100 L29,100 Z" android:fillColor="#0284C7" />
+              <path android:pathData="M23,89 L85,89" android:strokeColor="#F8FAFC" android:strokeWidth="2" />
+          </vector>
+          EOF
+
+          # پس‌زمینه گرافیکی با افکت تصویر تار حرم
+          cat << 'EOF' > app/src/main/res/drawable/bg_blurred_haram.xml
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="360dp" android:height="640dp"
+              android:viewportWidth="360" android:viewportHeight="640">
+              <!-- رنگ زمینه آسمان تیره -->
+              <path android:pathData="M0,0h360v640h-360z" android:fillColor="#091427" />
+              <!-- سیلوئت تار شده و هاله گنبد فیروزه‌ای در عمق -->
+              <path android:pathData="M180,260m-130,0a130,130 0,1,1 260,0a130,130 0,1,1 -260,0" android:fillColor="#152642" />
+              <path android:pathData="M110,220 C110,90 145,70 180,70 C215,70 250,90 250,220 Z" android:fillColor="#1E3E62" />
+              <path android:pathData="M120,220 L240,220 L225,500 L135,500 Z" android:fillColor="#132B47" />
+              <!-- هاله طلایی ساعت در پس‌زمینه مات -->
+              <path android:pathData="M180,360m-50,0a50,50 0,1,1 100,0a50,50 0,1,1 -100,0" android:fillColor="#243328" />
+              <!-- لایه تار و مات کلی شیشه‌ای (Glassmorphism Tint) -->
+              <path android:pathData="M0,0h360v640h-360z" android:fillColor="#B80B1C33" />
           </vector>
           EOF
 
@@ -138,10 +186,35 @@ jobs:
               override fun onCreate(b: Bundle?) {
                   super.onCreate(b)
                   val p = getSharedPreferences("P", 0)
-                  val sv = ScrollView(this).apply { setBackgroundColor(Color.parseColor("#0C2340")); isFillViewport = true }
-                  val ll = LinearLayout(this).apply { orientation = 1; gravity = Gravity.CENTER_HORIZONTAL; setPadding(40, 50, 40, 50) }
-                  val t = TextView(this).apply { text = "ساعت حرم امام رضا (ع)"; textSize = 22f; setTextColor(Color.parseColor("#38BDF8")); typeface = Typeface.DEFAULT_BOLD; gravity = 1 }
-                  val st = TextView(this).apply { text = if (p.getBoolean("on", false)) "وضعیت: فعال (سر ساعت و نیم‌ساعت)" else "وضعیت: غیرفعال"; textSize = 15f; setTextColor(if (p.getBoolean("on", false)) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8")); gravity = 1; setPadding(0, 10, 0, 25) }
+
+                  // استفاده از تصویر پس‌زمینه تار برج حرم
+                  val sv = ScrollView(this).apply {
+                      setBackgroundResource(resources.getIdentifier("bg_blurred_haram", "drawable", packageName))
+                      isFillViewport = true
+                  }
+
+                  val ll = LinearLayout(this).apply {
+                      orientation = 1
+                      gravity = Gravity.CENTER_HORIZONTAL
+                      setPadding(40, 50, 40, 50)
+                  }
+
+                  val t = TextView(this).apply {
+                      text = "ساعت حرم امام رضا (ع)"
+                      textSize = 22f
+                      setTextColor(Color.parseColor("#38BDF8"))
+                      typeface = Typeface.DEFAULT_BOLD
+                      gravity = 1
+                  }
+
+                  val st = TextView(this).apply {
+                      text = if (p.getBoolean("on", false)) "وضعیت: فعال (سر ساعت و نیم‌ساعت)" else "وضعیت: غیرفعال"
+                      textSize = 15f
+                      setTextColor(if (p.getBoolean("on", false)) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8"))
+                      gravity = 1
+                      setPadding(0, 10, 0, 25)
+                  }
+
                   val btn = Button(this).apply {
                       val on = p.getBoolean("on", false)
                       text = if (on) "خاموش کردن زنگ" else "روشن کردن زنگ ساعتی"
@@ -152,17 +225,34 @@ jobs:
                           p.edit().putBoolean("on", n).apply()
                           if (n) {
                               HourlyReceiver.sch(this@MainActivity)
-                              text = "خاموش کردن زنگ"; setBackgroundColor(Color.parseColor("#DC2626"))
-                              st.text = "وضعیت: فعال (سر ساعت و نیم‌ساعت)"; st.setTextColor(Color.parseColor("#4ADE80"))
+                              text = "خاموش کردن زنگ"
+                              setBackgroundColor(Color.parseColor("#DC2626"))
+                              st.text = "وضعیت: فعال (سر ساعت و نیم‌ساعت)"
+                              st.setTextColor(Color.parseColor("#4ADE80"))
                           } else {
                               HourlyReceiver.can(this@MainActivity)
-                              text = "روشن کردن زنگ ساعتی"; setBackgroundColor(Color.parseColor("#0284C7"))
-                              st.text = "وضعیت: غیرفعال"; st.setTextColor(Color.parseColor("#94A3B8"))
+                              text = "روشن کردن زنگ ساعتی"
+                              setBackgroundColor(Color.parseColor("#0284C7"))
+                              st.text = "وضعیت: غیرفعال"
+                              st.setTextColor(Color.parseColor("#94A3B8"))
                           }
                       }
                   }
-                  val ch = CheckBox(this).apply { text = "تک‌زنگ در دقیقه ۳۰ (نیم‌ساعت)"; setTextColor(Color.parseColor("#FDE047")); isChecked = p.getBoolean("half", true); setOnCheckedChangeListener { _, c -> p.edit().putBoolean("half", c).apply() } }
-                  val cq = CheckBox(this).apply { text = "بی‌صدا در شب (۲۳:۰۰ الی ۰۷:۰۰)"; setTextColor(Color.parseColor("#E2E8F0")); isChecked = p.getBoolean("q", true); setOnCheckedChangeListener { _, c -> p.edit().putBoolean("q", c).apply() } }
+
+                  val ch = CheckBox(this).apply {
+                      text = "تک‌زنگ در دقیقه ۳۰ (نیم‌ساعت)"
+                      setTextColor(Color.parseColor("#FDE047"))
+                      isChecked = p.getBoolean("half", true)
+                      setOnCheckedChangeListener { _, c -> p.edit().putBoolean("half", c).apply() }
+                  }
+
+                  val cq = CheckBox(this).apply {
+                      text = "بی‌صدا در شب (۲۳:۰۰ الی ۰۷:۰۰)"
+                      setTextColor(Color.parseColor("#E2E8F0"))
+                      isChecked = p.getBoolean("q", true)
+                      setOnCheckedChangeListener { _, c -> p.edit().putBoolean("q", c).apply() }
+                  }
+
                   val spSnd = Spinner(this).apply {
                       adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("ناقوس ساعت حرم", "پاندولی کلاسیک", "بیپ آرام", "فایل دلخواه گوشی"))
                       setSelection(p.getInt("snd", 0))
@@ -171,6 +261,7 @@ jobs:
                           override fun onNothingSelected(p0: AdapterView<*>?) {}
                       }
                   }
+
                   val vals = longArrayOf(0L, 500L, 1000L, 1500L, 2000L)
                   val spGap = Spinner(this).apply {
                       adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("بدون فاصله (۰ ثانیه)", "۰.۵ ثانیه", "۱ ثانیه", "۱.۵ ثانیه", "۲ ثانیه"))
@@ -182,14 +273,33 @@ jobs:
                           override fun onNothingSelected(p0: AdapterView<*>?) {}
                       }
                   }
-                  val btnF = Button(this).apply { text = "انتخاب فایل صوتی دلخواه..."; setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#38BDF8")); setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ) } }
-                  val btnT = Button(this).apply { text = "تست صدای ساعت جاری"; setBackgroundColor(Color.parseColor("#334155")); setTextColor(Color.WHITE); setOnClickListener { val h = Calendar.getInstance().get(11) % 12; HourlyReceiver.play(this@MainActivity, if (h == 0) 12 else h) } }
-                  val btnTH = Button(this).apply { text = "تست تک‌زنگ نیم‌ساعت"; setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#FDE047")); setOnClickListener { HourlyReceiver.play(this@MainActivity, 1) } }
+
+                  val btnF = Button(this).apply {
+                      text = "انتخاب فایل صوتی دلخواه..."
+                      setBackgroundColor(Color.parseColor("#1E293B"))
+                      setTextColor(Color.parseColor("#38BDF8"))
+                      setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ) }
+                  }
+
+                  val btnT = Button(this).apply {
+                      text = "تست صدای ساعت جاری"
+                      setBackgroundColor(Color.parseColor("#334155"))
+                      setTextColor(Color.WHITE)
+                      setOnClickListener { val h = Calendar.getInstance().get(11) % 12; HourlyReceiver.play(this@MainActivity, if (h == 0) 12 else h) }
+                  }
+
+                  val btnTH = Button(this).apply {
+                      text = "تست تک‌زنگ نیم‌ساعت"
+                      setBackgroundColor(Color.parseColor("#1E293B"))
+                      setTextColor(Color.parseColor("#FDE047"))
+                      setOnClickListener { HourlyReceiver.play(this@MainActivity, 1) }
+                  }
 
                   ll.addView(t); ll.addView(st); ll.addView(btn); ll.addView(ch); ll.addView(cq)
                   ll.addView(spSnd); ll.addView(spGap); ll.addView(btnF); ll.addView(btnT); ll.addView(btnTH)
                   sv.addView(ll); setContentView(sv)
               }
+
               override fun onActivityResult(req: Int, res: Int, d: Intent?) {
                   super.onActivityResult(req, res, d)
                   if (req == REQ && res == RESULT_OK) {
@@ -267,11 +377,4 @@ jobs:
           EOF
 
       - name: Build Debug APK
-        run: gradle assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: HaramClock-White-APK
-          path: app/build/outputs/apk/debug/*.apk
-          
+    
