@@ -1,0 +1,463 @@
+name: Build Native Android APK
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Haram Clock Project with Zero Interval Support
+        run: |
+          mkdir -p app/src/main/java/com/example/hourlychime
+          mkdir -p app/src/main/res/drawable
+
+          # 1. settings.gradle
+          cat << 'EOF' > settings.gradle
+          rootProject.name = "HourlyChimeApp"
+          include ':app'
+          EOF
+
+          # 2. Root build.gradle
+          cat << 'EOF' > build.gradle
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.2.2'
+                  classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          EOF
+
+          # 3. app/build.gradle
+          cat << 'EOF' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+              id 'org.jetbrains.kotlin.android'
+          }
+
+          android {
+              namespace 'com.example.hourlychime'
+              compileSdk 34
+
+              defaultConfig {
+                  applicationId "com.example.hourlychime"
+                  minSdk 23
+                  targetSdk 34
+                  versionCode 6
+                  versionName "1.5"
+              }
+
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+              kotlinOptions {
+                  jvmTarget = '1.8'
+              }
+          }
+          EOF
+
+          # 4. Vector Icon
+          cat << 'EOF' > app/src/main/res/drawable/ic_launcher_haram.xml
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+
+              <path
+                  android:pathData="M0,0h108v108h-108z"
+                  android:fillColor="#4F6D96" />
+
+              <path
+                  android:pathData="M54,4 L54,16"
+                  android:strokeColor="#CBD5E1"
+                  android:strokeWidth="1.8" />
+              <path
+                  android:pathData="M54,6m-2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0"
+                  android:fillColor="#94A3B8" />
+
+              <path
+                  android:pathData="M34,36 C34,20 44,15 54,15 C64,15 74,20 74,36 Z"
+                  android:fillColor="#38BDF8" />
+              <path
+                  android:pathData="M40,32 C48,22 60,22 68,32 M44,22 C50,30 58,30 64,22"
+                  android:strokeColor="#FFFFFF"
+                  android:strokeWidth="1.2"
+                  android:fillColor="#00000000" />
+
+              <path
+                  android:pathData="M33,36 L75,36 L73,39 L35,39 Z"
+                  android:fillColor="#F59E0B" />
+
+              <path
+                  android:pathData="M35,39 L73,39 L71,55 L37,55 Z"
+                  android:fillColor="#1E3A8A" />
+
+              <path
+                  android:pathData="M27,55 L81,55 L79,59 L29,59 Z"
+                  android:fillColor="#E2E8F0" />
+
+              <path
+                  android:pathData="M36,59 L72,59 L68,88 L40,88 Z"
+                  android:fillColor="#1E40AF" />
+
+              <path
+                  android:pathData="M39,69 L43,69 L43,81 L39,81 Z"
+                  android:fillColor="#93C5FD" />
+              <path
+                  android:pathData="M65,69 L69,69 L69,81 L65,81 Z"
+                  android:fillColor="#93C5FD" />
+
+              <path
+                  android:pathData="M54,75m-12,0a12,12 0,1,1 24,0a12,12 0,1,1 -24,0"
+                  android:fillColor="#FFFFFF" />
+              <path
+                  android:pathData="M54,75m-12,0a12,12 0,1,1 24,0a12,12 0,1,1 -24,0"
+                  android:strokeColor="#F59E0B"
+                  android:strokeWidth="1.8" />
+
+              <path
+                  android:pathData="M54,75 L54,67"
+                  android:strokeColor="#0F172A"
+                  android:strokeWidth="2"
+                  android:strokeLineCap="round" />
+              <path
+                  android:pathData="M54,75 L61,75"
+                  android:strokeColor="#0F172A"
+                  android:strokeWidth="1.8"
+                  android:strokeLineCap="round" />
+
+              <path
+                  android:pathData="M25,88 L83,88 L77,98 L31,98 Z"
+                  android:fillColor="#3B82F6" />
+              <path
+                  android:pathData="M25,88 L83,88"
+                  android:strokeColor="#FFFFFF"
+                  android:strokeWidth="2" />
+          </vector>
+          EOF
+
+          # 5. AndroidManifest.xml
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+              <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+              <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+              <uses-permission android:name="android.permission.WAKE_LOCK" />
+
+              <application
+                  android:allowBackup="true"
+                  android:icon="@drawable/ic_launcher_haram"
+                  android:label="ساعت حرم"
+                  android:supportsRtl="true"
+                  android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+
+                  <receiver
+                      android:name=".HourlyChimeReceiver"
+                      android:enabled="true"
+                      android:exported="false" />
+
+                  <receiver
+                      android:name=".BootReceiver"
+                      android:enabled="true"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.BOOT_COMPLETED" />
+                          <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+                      </intent-filter>
+                  </receiver>
+              </application>
+          </manifest>
+          EOF
+
+          # 6. MainActivity.kt (با پشتیبانی از فاصله صفر ثانیه)
+          cat << 'EOF' > app/src/main/java/com/example/hourlychime/MainActivity.kt
+          package com.example.hourlychime
+
+          import android.app.Activity
+          import android.app.AlarmManager
+          import android.app.PendingIntent
+          import android.content.BroadcastReceiver
+          import android.content.Context
+          import android.content.Intent
+          import android.graphics.Color
+          import android.graphics.Typeface
+          import android.media.AudioAttributes
+          import android.media.AudioFormat
+          import android.media.AudioTrack
+          import android.media.MediaPlayer
+          import android.net.Uri
+          import android.os.Build
+          import android.os.Bundle
+          import android.view.Gravity
+          import android.widget.AdapterView
+          import android.widget.ArrayAdapter
+          import android.widget.Button
+          import android.widget.CheckBox
+          import android.widget.LinearLayout
+          import android.widget.ScrollView
+          import android.widget.Spinner
+          import android.widget.TextView
+          import android.widget.Toast
+          import java.util.Calendar
+          import kotlin.concurrent.thread
+          import kotlin.math.sin
+
+          class MainActivity : Activity() {
+
+              private val PICK_AUDIO_REQUEST = 999
+
+              override fun onCreate(savedInstanceState: Bundle?) {
+                  super.onCreate(savedInstanceState)
+                  val prefs = getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
+
+                  val scroll = ScrollView(this).apply {
+                      setBackgroundColor(Color.parseColor("#0C2340"))
+                      isFillViewport = true
+                  }
+
+                  val root = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      gravity = Gravity.CENTER_HORIZONTAL
+                      setPadding(40, 50, 40, 50)
+                  }
+
+                  val title = TextView(this).apply {
+                      text = "ساعت حرم امام رضا (ع)"
+                      textSize = 22f
+                      setTextColor(Color.parseColor("#38BDF8"))
+                      typeface = Typeface.DEFAULT_BOLD
+                      gravity = Gravity.CENTER
+                      setPadding(0, 0, 0, 20)
+                  }
+
+                  val statusText = TextView(this).apply {
+                      val active = prefs.getBoolean("is_alarm_active", false)
+                      text = if (active) "وضعیت: فعال (پخش سر هر ساعت)" else "وضعیت: غیرفعال"
+                      textSize = 15f
+                      setTextColor(if (active) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8"))
+                      gravity = Gravity.CENTER
+                      setPadding(0, 0, 0, 30)
+                  }
+
+                  val btnToggle = Button(this).apply {
+                      val isActive = prefs.getBoolean("is_alarm_active", false)
+                      text = if (isActive) "خاموش کردن زنگ" else "روشن کردن زنگ ساعتی"
+                      setBackgroundColor(if (isActive) Color.parseColor("#DC2626") else Color.parseColor("#0284C7"))
+                      setTextColor(Color.WHITE)
+
+                      setOnClickListener {
+                          val currentState = prefs.getBoolean("is_alarm_active", false)
+                          val newState = !currentState
+                          prefs.edit().putBoolean("is_alarm_active", newState).apply()
+
+                          if (newState) {
+                              HourlyChimeReceiver.scheduleNextChime(this@MainActivity)
+                              text = "خاموش کردن زنگ"
+                              setBackgroundColor(Color.parseColor("#DC2626"))
+                              statusText.text = "وضعیت: فعال (پخش سر هر ساعت)"
+                              statusText.setTextColor(Color.parseColor("#4ADE80"))
+                              Toast.makeText(this@MainActivity, "زنگ ساعتی فعال شد", Toast.LENGTH_SHORT).show()
+                          } else {
+                              HourlyChimeReceiver.cancelChime(this@MainActivity)
+                              text = "روشن کردن زنگ ساعتی"
+                              setBackgroundColor(Color.parseColor("#0284C7"))
+                              statusText.text = "وضعیت: غیرفعال"
+                              statusText.setTextColor(Color.parseColor("#94A3B8"))
+                              Toast.makeText(this@MainActivity, "زنگ غیرفعال شد", Toast.LENGTH_SHORT).show()
+                          }
+                      }
+                  }
+
+                  val chkQuiet = CheckBox(this).apply {
+                      text = "حالت بی‌صدا در شب (۲۳:۰۰ الی ۰۷:۰۰)"
+                      setTextColor(Color.parseColor("#E2E8F0"))
+                      isChecked = prefs.getBoolean("quiet_enabled", true)
+                      setPadding(0, 20, 0, 20)
+                      setOnCheckedChangeListener { _, checked ->
+                          prefs.edit().putBoolean("quiet_enabled", checked).apply()
+                      }
+                  }
+
+                  val soundLabel = TextView(this).apply {
+                      text = "انتخاب نوای زنگ:"
+                      setTextColor(Color.parseColor("#BAE6FD"))
+                      textSize = 14f
+                      setPadding(0, 20, 0, 10)
+                  }
+
+                  val soundOptions = arrayOf("زنگ ناقوس ساعت حرم (اصلی)", "ساعت پاندولی کلاسیک", "بیپ آرام", "فایل صوتی انتخابی از حافظه")
+                  val spinnerSound = Spinner(this).apply {
+                      val adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, soundOptions)
+                      setAdapter(adapter)
+                      setSelection(prefs.getInt("sound_type", 0))
+                      onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                          override fun onItemSelected(p0: AdapterView<*>?, p1: android.view.View?, pos: Int, id: Long) {
+                              prefs.edit().putInt("sound_type", pos).apply()
+                          }
+                          override fun onNothingSelected(p0: AdapterView<*>?) {}
+                      }
+                  }
+
+                  val intervalLabel = TextView(this).apply {
+                      text = "فاصله زمانی بین هر ضربه زنگ:"
+                      setTextColor(Color.parseColor("#BAE6FD"))
+                      textSize = 14f
+                      setPadding(0, 20, 0, 10)
+                  }
+
+                  val intervalOptions = arrayOf(
+                      "بدون فاصله (۰ ثانیه / پشت سر هم)",
+                      "۰.۵ ثانیه (خیلی سریع)",
+                      "۱ ثانیه (سریع)",
+                      "۱.۵ ثانیه (استاندارد)",
+                      "۲ ثانیه",
+                      "۳ ثانیه (آرام)"
+                  )
+                  val intervalValues = longArrayOf(0L, 500L, 1000L, 1500L, 2000L, 3000L)
+                  val spinnerInterval = Spinner(this).apply {
+                      val adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, intervalOptions)
+                      setAdapter(adapter)
+                      val savedInterval = prefs.getLong("chime_interval_ms", 1500L)
+                      val selectedIndex = intervalValues.indexOf(savedInterval).let { if (it >= 0) it else 3 }
+                      setSelection(selectedIndex)
+                      onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
+                          override fun onItemSelected(p0: AdapterView<*>?, p1: android.view.View?, pos: Int, id: Long) {
+                              prefs.edit().putLong("chime_interval_ms", intervalValues[pos]).apply()
+                          }
+                          override fun onNothingSelected(p0: AdapterView<*>?) {}
+                      }
+                  }
+
+                  val btnPickAudio = Button(this).apply {
+                      text = "انتخاب فایل صوتی دلخواه..."
+                      setBackgroundColor(Color.parseColor("#1E293B"))
+                      setTextColor(Color.parseColor("#38BDF8"))
+                      setOnClickListener {
+                          val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                              addCategory(Intent.CATEGORY_OPENABLE)
+                              type = "audio/*"
+                          }
+                          startActivityForResult(intent, PICK_AUDIO_REQUEST)
+                      }
+                  }
+
+                  val btnTest = Button(this).apply {
+                      text = "تست صدای ساعت جاری"
+                      setBackgroundColor(Color.parseColor("#334155"))
+                      setTextColor(Color.parseColor("#CBD5E1"))
+                      setOnClickListener {
+                          val count = when (val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY) % 12) {
+                              0 -> 12
+                              else -> h
+                          }
+                          Toast.makeText(this@MainActivity, "پخش $count ضربه زنگ...", Toast.LENGTH_SHORT).show()
+                          HourlyChimeReceiver.playChime(this@MainActivity, count)
+                      }
+                  }
+
+                  root.addView(title)
+                  root.addView(statusText)
+                  root.addView(btnToggle)
+                  root.addView(chkQuiet)
+                  root.addView(soundLabel)
+                  root.addView(spinnerSound)
+                  root.addView(intervalLabel)
+                  root.addView(spinnerInterval)
+                  root.addView(btnPickAudio)
+                  root.addView(btnTest)
+
+                  scroll.addView(root)
+                  setContentView(scroll)
+              }
+
+              override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+                  super.onActivityResult(requestCode, resultCode, data)
+                  if (requestCode == PICK_AUDIO_REQUEST && resultCode == Activity.RESULT_OK) {
+                      data?.data?.let { uri ->
+                          try {
+                              contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                          } catch (_: Exception) {}
+                          val prefs = getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
+                          prefs.edit()
+                              .putString("custom_audio_uri", uri.toString())
+                              .putInt("sound_type", 3)
+                              .apply()
+                          Toast.makeText(this, "فایل صوتی با موفقیت تنظیم شد", Toast.LENGTH_SHORT).show()
+                      }
+                  }
+              }
+          }
+
+          class HourlyChimeReceiver : BroadcastReceiver() {
+              override fun onReceive(context: Context, intent: Intent) {
+                  val hour24 = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                  if (!isQuietHour(context, hour24)) {
+                      val count = when (val h = hour24 % 12) {
+                          0 -> 12
+                          else -> h
+                      }
+                      playChime(context, count)
+                  }
+                  scheduleNextChime(context)
+              }
+
+              private fun isQuietHour(context: Context, currentHour: Int): Boolean {
+                  val prefs = context.getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
+                  if (!prefs.getBoolean("quiet_enabled", true)) return false
+                  val start = prefs.getInt("quiet_start", 23)
+                  val end = prefs.getInt("quiet_end", 7)
+                  return currentHour >= start || currentHour < end
+              }
+
+              companion object {
+                  fun playChime(context: Context, totalRounds: Int) {
+                      val prefs = context.getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
+                      val type = prefs.getInt("sound_type", 0)
+                      val uriStr = prefs.getString("custom_audio_uri", null)
+                      val intervalMs = prefs.getLong("chime_interval_ms", 1500L)
+
+                      thread {
+                          for (i in 0 until totalRounds) {
+                              if (type == 3 && uriStr != null) {
+                                  try {
+                                      val mp = MediaPlayer.create(context, Uri.parse(uriStr))
+                                     
