@@ -19,31 +19,17 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Complete Native Project
+      - name: Generate Lightweight Native Project
         run: |
           mkdir -p app/src/main/java/com/example/hourlychime
 
-          # 1. settings.gradle
+          # settings.gradle
           cat << 'EOF' > settings.gradle
-          pluginManagement {
-              repositories {
-                  google()
-                  mavenCentral()
-                  gradlePluginPortal()
-              }
-          }
-          dependencyResolutionManagement {
-              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
-              repositories {
-                  google()
-                  mavenCentral()
-              }
-          }
           rootProject.name = "HourlyChimeApp"
           include ':app'
           EOF
 
-          # 2. Root build.gradle
+          # Root build.gradle
           cat << 'EOF' > build.gradle
           buildscript {
               repositories {
@@ -55,9 +41,15 @@ jobs:
                   classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.22'
               }
           }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
           EOF
 
-          # 3. app/build.gradle
+          # app/build.gradle (بدون وابستگی اضافه و کاملاً مستقل)
           cat << 'EOF' > app/build.gradle
           plugins {
               id 'com.android.application'
@@ -89,15 +81,9 @@ jobs:
                   jvmTarget = '1.8'
               }
           }
-
-          dependencies {
-              implementation 'androidx.core:core-ktx:1.12.0'
-              implementation 'androidx.appcompat:appcompat:1.6.1'
-              implementation 'com.google.android.material:material:1.11.0'
-          }
           EOF
 
-          # 4. AndroidManifest.xml
+          # AndroidManifest.xml
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -111,7 +97,7 @@ jobs:
                   android:icon="@android:drawable/ic_lock_idle_alarm"
                   android:label="زنگ ساعتی"
                   android:supportsRtl="true"
-                  android:theme="@style/Theme.MaterialComponents.DayNight.NoActionBar">
+                  android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
                   <activity
                       android:name=".MainActivity"
@@ -140,10 +126,11 @@ jobs:
           </manifest>
           EOF
 
-          # 5. MainActivity.kt (شامل تمام منطق برنامه، زنگ‌ها، حالت شب و بیداری)
+          # MainActivity.kt با Activity خالص اندروید
           cat << 'EOF' > app/src/main/java/com/example/hourlychime/MainActivity.kt
           package com.example.hourlychime
 
+          import android.app.Activity
           import android.app.AlarmManager
           import android.app.PendingIntent
           import android.content.BroadcastReceiver
@@ -162,12 +149,11 @@ jobs:
           import android.widget.LinearLayout
           import android.widget.TextView
           import android.widget.Toast
-          import androidx.appcompat.app.AppCompatActivity
           import java.util.Calendar
           import kotlin.concurrent.thread
           import kotlin.math.sin
 
-          class MainActivity : AppCompatActivity() {
+          class MainActivity : Activity() {
               override fun onCreate(savedInstanceState: Bundle?) {
                   super.onCreate(savedInstanceState)
                   val prefs = getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
@@ -384,4 +370,3 @@ jobs:
         with:
           name: HourlyChime-App-APK
           path: app/build/outputs/apk/debug/*.apk
-          
