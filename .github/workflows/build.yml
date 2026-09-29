@@ -23,10 +23,6 @@ jobs:
         run: |
           mkdir -p app/src/main/java/com/example/hourlychime
           mkdir -p app/src/main/res/drawable
-          mkdir -p app/src/main/res/mipmap-hdpi
-          mkdir -p app/src/main/res/mipmap-xhdpi
-          mkdir -p app/src/main/res/mipmap-xxhdpi
-          mkdir -p app/src/main/res/mipmap-xxxhdpi
 
           # 1. settings.gradle
           cat << 'EOF' > settings.gradle
@@ -88,11 +84,7 @@ jobs:
           }
           EOF
 
-          # 4. دانلود مستقیم و برش استاندارد عکس ارسالی به عنوان آیکون برنامه
-          sudo apt-get install -y imagemagick
-          curl -sL "https://images.unsplash.com/photo-1590076215667-875d4ef2d7ee?w=512" -o /tmp/base_bg.jpg || true
-          
-          # تولید وکتور با جزئیات دقیق تصویر ارسالی (گنبد فیروزه‌ای اسلیمی و برج ساعت)
+          # 4. وکتور آیکون اختصاصی ساعت حرم
           cat << 'EOF' > app/src/main/res/drawable/ic_launcher_haram.xml
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
               android:width="108dp"
@@ -100,12 +92,10 @@ jobs:
               android:viewportWidth="108"
               android:viewportHeight="108">
 
-              <!-- پس زمینه آسمان آبی عکس حرم -->
               <path
                   android:pathData="M0,0h108v108h-108z"
                   android:fillColor="#4F6D96" />
 
-              <!-- گلدسته و میل انتهای گنبد -->
               <path
                   android:pathData="M54,4 L54,16"
                   android:strokeColor="#CBD5E1"
@@ -114,38 +104,31 @@ jobs:
                   android:pathData="M54,6m-2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0"
                   android:fillColor="#94A3B8" />
 
-              <!-- گنبد فیروزه‌ای پیازی با نقوش کاشی -->
               <path
                   android:pathData="M34,36 C34,20 44,15 54,15 C64,15 74,20 74,36 Z"
                   android:fillColor="#38BDF8" />
-              <!-- طرح اسلیمی و شبکه گره‌چینی روی گنبد -->
               <path
                   android:pathData="M40,32 C48,22 60,22 68,32 M44,22 C50,30 58,30 64,22"
                   android:strokeColor="#FFFFFF"
                   android:strokeWidth="1.2"
                   android:fillColor="#00000000" />
 
-              <!-- طوقه طلایی دور گردن گنبد -->
               <path
                   android:pathData="M33,36 L75,36 L73,39 L35,39 Z"
                   android:fillColor="#F59E0B" />
 
-              <!-- اتاقک اذان‌گو و بلندگوها -->
               <path
                   android:pathData="M35,39 L73,39 L71,55 L37,55 Z"
                   android:fillColor="#1E3A8A" />
 
-              <!-- بالکن بالایی با نرده سفید مشبک -->
               <path
                   android:pathData="M27,55 L81,55 L79,59 L29,59 Z"
                   android:fillColor="#E2E8F0" />
 
-              <!-- بدنه ۸ ضلعی برج ساعت با کاشی‌های لاجوردی -->
               <path
                   android:pathData="M36,59 L72,59 L68,88 L40,88 Z"
                   android:fillColor="#1E40AF" />
 
-              <!-- پنجره‌های باریک طرفین ساعت -->
               <path
                   android:pathData="M39,69 L43,69 L43,81 L39,81 Z"
                   android:fillColor="#93C5FD" />
@@ -153,7 +136,6 @@ jobs:
                   android:pathData="M65,69 L69,69 L69,81 L65,81 Z"
                   android:fillColor="#93C5FD" />
 
-              <!-- صفحه گرد ساعت حرم -->
               <path
                   android:pathData="M54,75m-12,0a12,12 0,1,1 24,0a12,12 0,1,1 -24,0"
                   android:fillColor="#FFFFFF" />
@@ -162,7 +144,6 @@ jobs:
                   android:strokeColor="#F59E0B"
                   android:strokeWidth="1.8" />
 
-              <!-- عقربه‌های ساعت حرم -->
               <path
                   android:pathData="M54,75 L54,67"
                   android:strokeColor="#0F172A"
@@ -174,7 +155,6 @@ jobs:
                   android:strokeWidth="1.8"
                   android:strokeLineCap="round" />
 
-              <!-- بالکن پایینی و مقرنس‌های سنتی -->
               <path
                   android:pathData="M25,88 L83,88 L77,98 L31,98 Z"
                   android:fillColor="#3B82F6" />
@@ -228,7 +208,7 @@ jobs:
           </manifest>
           EOF
 
-          # 6. MainActivity.kt (با تنظیمات صدای دلخواه و ظاهر متناسب با کاشی‌کاری‌های حرم)
+          # 6. MainActivity.kt
           cat << 'EOF' > app/src/main/java/com/example/hourlychime/MainActivity.kt
           package com.example.hourlychime
 
@@ -460,4 +440,97 @@ jobs:
                       }
                   }
 
-   
+                  private fun playSynthesizedTone(freq: Double, decay: Double) {
+                      val sampleRate = 44100
+                      val duration = 1.1
+                      val numSamples = (duration * sampleRate).toInt()
+                      val buffer = ShortArray(numSamples)
+
+                      for (i in 0 until numSamples) {
+                          val t = i.toDouble() / sampleRate
+                          val envelope = Math.exp(-decay * t)
+                          val sample = sin(2 * Math.PI * freq * t) * envelope
+                          buffer[i] = (sample * 32767).toInt().toShort()
+                      }
+
+                      val track = AudioTrack.Builder()
+                          .setAudioAttributes(
+                              AudioAttributes.Builder()
+                                  .setUsage(AudioAttributes.USAGE_ALARM)
+                                  .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                  .build()
+                          )
+                          .setAudioFormat(
+                              AudioFormat.Builder()
+                                  .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                                  .setSampleRate(sampleRate)
+                                  .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
+                                  .build()
+                          )
+                          .setBufferSizeInBytes(numSamples * 2)
+                          .setTransferMode(AudioTrack.MODE_STATIC)
+                          .build()
+
+                      track.write(buffer, 0, numSamples)
+                      track.play()
+                      Thread.sleep(1100)
+                      track.release()
+                  }
+
+                  fun scheduleNextChime(context: Context) {
+                      val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                      val intent = Intent(context, HourlyChimeReceiver::class.java)
+                      val pendingIntent = PendingIntent.getBroadcast(
+                          context, 1001, intent,
+                          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                      )
+                      val cal = Calendar.getInstance().apply {
+                          add(Calendar.HOUR_OF_DAY, 1)
+                          set(Calendar.MINUTE, 0)
+                          set(Calendar.SECOND, 0)
+                          set(Calendar.MILLISECOND, 0)
+                      }
+                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                          alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
+                      } else {
+                          alarmManager.setExact(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
+                      }
+                  }
+
+                  fun cancelChime(context: Context) {
+                      val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+                      val intent = Intent(context, HourlyChimeReceiver::class.java)
+                      val pendingIntent = PendingIntent.getBroadcast(
+                          context, 1001, intent,
+                          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                      )
+                      alarmManager.cancel(pendingIntent)
+                  }
+              }
+          }
+
+          class BootReceiver : BroadcastReceiver() {
+              override fun onReceive(context: Context, intent: Intent) {
+                  if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == "android.intent.action.QUICKBOOT_POWERON") {
+                      val prefs = context.getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
+                      if (prefs.getBoolean("is_alarm_active", false)) {
+                          HourlyChimeReceiver.scheduleNextChime(context)
+                      }
+                  }
+              }
+          }
+          EOF
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2'
+
+      - name: Build Debug APK
+        run: gradle assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: HaramClock-PhotoIcon-APK
+          path: app/build/outputs/apk/debug/*.apk
