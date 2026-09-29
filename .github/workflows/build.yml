@@ -19,7 +19,7 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Project Files
+      - name: Setup Project with Half-Hour Chime Support
         run: |
           mkdir -p app/src/main/java/com/example/hourlychime
           mkdir -p app/src/main/res/drawable
@@ -62,8 +62,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 7
-                  versionName "1.6"
+                  versionCode 8
+                  versionName "1.7"
               }
 
               buildTypes {
@@ -254,7 +254,7 @@ jobs:
 
                   val statusText = TextView(this).apply {
                       val active = prefs.getBoolean("is_alarm_active", false)
-                      text = if (active) "وضعیت: فعال (پخش سر هر ساعت)" else "وضعیت: غیرفعال"
+                      text = if (active) "وضعیت: فعال (پخش سر ساعت و نیم‌ساعت)" else "وضعیت: غیرفعال"
                       textSize = 15f
                       setTextColor(if (active) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8"))
                       gravity = Gravity.CENTER
@@ -276,7 +276,7 @@ jobs:
                               HourlyChimeReceiver.scheduleNextChime(this@MainActivity)
                               text = "خاموش کردن زنگ"
                               setBackgroundColor(Color.parseColor("#DC2626"))
-                              statusText.text = "وضعیت: فعال (پخش سر هر ساعت)"
+                              statusText.text = "وضعیت: فعال (پخش سر ساعت و نیم‌ساعت)"
                               statusText.setTextColor(Color.parseColor("#4ADE80"))
                               Toast.makeText(this@MainActivity, "زنگ ساعتی فعال شد", Toast.LENGTH_SHORT).show()
                           } else {
@@ -290,11 +290,21 @@ jobs:
                       }
                   }
 
+                  val chkHalfHour = CheckBox(this).apply {
+                      text = "نواختن تک‌زنگ در نیم‌ساعت (دقیقه ۳۰)"
+                      setTextColor(Color.parseColor("#FDE047"))
+                      isChecked = prefs.getBoolean("half_hour_enabled", true)
+                      setPadding(0, 25, 0, 10)
+                      setOnCheckedChangeListener { _, checked ->
+                          prefs.edit().putBoolean("half_hour_enabled", checked).apply()
+                      }
+                  }
+
                   val chkQuiet = CheckBox(this).apply {
                       text = "حالت بی‌صدا در شب (۲۳:۰۰ الی ۰۷:۰۰)"
                       setTextColor(Color.parseColor("#E2E8F0"))
                       isChecked = prefs.getBoolean("quiet_enabled", true)
-                      setPadding(0, 20, 0, 20)
+                      setPadding(0, 10, 0, 20)
                       setOnCheckedChangeListener { _, checked ->
                           prefs.edit().putBoolean("quiet_enabled", checked).apply()
                       }
@@ -383,9 +393,20 @@ jobs:
                       }
                   }
 
+                  val btnTestHalf = Button(this).apply {
+                      text = "تست تک‌زنگ نیم‌ساعت (۱ ضربه)"
+                      setBackgroundColor(Color.parseColor("#1E293B"))
+                      setTextColor(Color.parseColor("#FDE047"))
+                      setOnClickListener {
+                          Toast.makeText(this@MainActivity, "پخش تک‌زنگ نیم‌ساعت...", Toast.LENGTH_SHORT).show()
+                          HourlyChimeReceiver.playChime(this@MainActivity, 1)
+                      }
+                  }
+
                   root.addView(title)
                   root.addView(statusText)
                   root.addView(btnToggle)
+                  root.addView(chkHalfHour)
                   root.addView(chkQuiet)
                   root.addView(soundLabel)
                   root.addView(spinnerSound)
@@ -393,6 +414,7 @@ jobs:
                   root.addView(spinnerInterval)
                   root.addView(btnPickAudio)
                   root.addView(btnTest)
+                  root.addView(btnTestHalf)
 
                   scroll.addView(root)
                   setContentView(scroll)
@@ -418,146 +440,14 @@ jobs:
 
           class HourlyChimeReceiver : BroadcastReceiver() {
               override fun onReceive(context: Context, intent: Intent) {
-                  val hour24 = Calendar.getInstance().get(Calendar.HOUR_OF_DAY)
+                  val cal = Calendar.getInstance()
+                  val hour24 = cal.get(Calendar.HOUR_OF_DAY)
+                  val minute = cal.get(Calendar.MINUTE)
+
                   if (!isQuietHour(context, hour24)) {
-                      val count = when (val h = hour24 % 12) {
-                          0 -> 12
-                          else -> h
-                      }
-                      playChime(context, count)
-                  }
-                  scheduleNextChime(context)
-              }
-
-              private fun isQuietHour(context: Context, currentHour: Int): Boolean {
-                  val prefs = context.getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
-                  if (!prefs.getBoolean("quiet_enabled", true)) return false
-                  val start = prefs.getInt("quiet_start", 23)
-                  val end = prefs.getInt("quiet_end", 7)
-                  return currentHour >= start || currentHour < end
-              }
-
-              companion object {
-                  fun playChime(context: Context, totalRounds: Int) {
                       val prefs = context.getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
-                      val type = prefs.getInt("sound_type", 0)
-                      val uriStr = prefs.getString("custom_audio_uri", null)
-                      val intervalMs = prefs.getLong("chime_interval_ms", 1500L)
+                      val halfHourEnabled = prefs.getBoolean("half_hour_enabled", true)
 
-                      thread {
-                          for (i in 0 until totalRounds) {
-                              if (type == 3 && uriStr != null) {
-                                  try {
-                                      val mp = MediaPlayer.create(context, Uri.parse(uriStr))
-                                      mp?.start()
-                                      val audioLength = mp?.duration?.toLong() ?: 1000L
-                                      Thread.sleep(audioLength + intervalMs)
-                                      mp?.release()
-                                  } catch (e: Exception) {
-                                      playSynthesizedTone(587.33, 3.8, intervalMs)
-                                  }
-                              } else {
-                                  when (type) {
-                                      1 -> playSynthesizedTone(440.0, 2.5, intervalMs)
-                                      2 -> playSynthesizedTone(880.0, 8.0, intervalMs)
-                                      else -> playSynthesizedTone(587.33, 3.8, intervalMs)
-                                  }
-                              }
-                          }
-                      }
-                  }
-
-                  private fun playSynthesizedTone(freq: Double, decay: Double, gapMs: Long) {
-                      val sampleRate = 44100
-                      val duration = if (gapMs == 0L) 0.75 else 1.0
-                      val numSamples = (duration * sampleRate).toInt()
-                      val buffer = ShortArray(numSamples)
-
-                      for (i in 0 until numSamples) {
-                          val t = i.toDouble() / sampleRate
-                          val envelope = Math.exp(-decay * t)
-                          val sample = sin(2 * Math.PI * freq * t) * envelope
-                          buffer[i] = (sample * 32767).toInt().toShort()
-                      }
-
-                      val track = AudioTrack.Builder()
-                          .setAudioAttributes(
-                              AudioAttributes.Builder()
-                                  .setUsage(AudioAttributes.USAGE_ALARM)
-                                  .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                                  .build()
-                          )
-                          .setAudioFormat(
-                              AudioFormat.Builder()
-                                  .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                  .setSampleRate(sampleRate)
-                                  .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                                  .build()
-                          )
-                          .setBufferSizeInBytes(numSamples * 2)
-                          .setTransferMode(AudioTrack.MODE_STATIC)
-                          .build()
-
-                      track.write(buffer, 0, numSamples)
-                      track.play()
-                      Thread.sleep((duration * 1000).toLong() + gapMs)
-                      track.release()
-                  }
-
-                  fun scheduleNextChime(context: Context) {
-                      val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                      val intent = Intent(context, HourlyChimeReceiver::class.java)
-                      val pendingIntent = PendingIntent.getBroadcast(
-                          context, 1001, intent,
-                          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                      )
-                      val cal = Calendar.getInstance().apply {
-                          add(Calendar.HOUR_OF_DAY, 1)
-                          set(Calendar.MINUTE, 0)
-                          set(Calendar.SECOND, 0)
-                          set(Calendar.MILLISECOND, 0)
-                      }
-                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                          alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
-                      } else {
-                          alarmManager.setExact(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
-                      }
-                  }
-
-                  fun cancelChime(context: Context) {
-                      val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                      val intent = Intent(context, HourlyChimeReceiver::class.java)
-                      val pendingIntent = PendingIntent.getBroadcast(
-                          context, 1001, intent,
-                          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                      )
-                      alarmManager.cancel(pendingIntent)
-                  }
-              }
-          }
-
-          class BootReceiver : BroadcastReceiver() {
-              override fun onReceive(context: Context, intent: Intent) {
-                  if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == "android.intent.action.QUICKBOOT_POWERON") {
-                      val prefs = context.getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
-                      if (prefs.getBoolean("is_alarm_active", false)) {
-                          HourlyChimeReceiver.scheduleNextChime(context)
-                      }
-                  }
-              }
-          }
-          EOF
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.2'
-
-      - name: Build Debug APK
-        run: gradle assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: HaramClock-IntervalZero-APK
-          path: app/build/outputs/apk/debug/*.apk
+                      if (minute in 25..35) {
+                          if (halfHourEnabled) {
+                              playChime(context, 1
