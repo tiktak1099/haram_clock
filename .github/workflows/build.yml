@@ -19,17 +19,19 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Custom Sound Native Project
+      - name: Generate Project with Haram Clock Icon
         run: |
           mkdir -p app/src/main/java/com/example/hourlychime
+          mkdir -p app/src/main/res/mipmap-anydpi-v26
+          mkdir -p app/src/main/res/drawable
 
-          # settings.gradle
+          # 1. settings.gradle
           cat << 'EOF' > settings.gradle
           rootProject.name = "HourlyChimeApp"
           include ':app'
           EOF
 
-          # Root build.gradle
+          # 2. Root build.gradle
           cat << 'EOF' > build.gradle
           buildscript {
               repositories {
@@ -49,7 +51,7 @@ jobs:
           }
           EOF
 
-          # app/build.gradle
+          # 3. app/build.gradle
           cat << 'EOF' > app/build.gradle
           plugins {
               id 'com.android.application'
@@ -64,8 +66,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 2
-                  versionName "1.1"
+                  versionCode 3
+                  versionName "1.2"
               }
 
               buildTypes {
@@ -83,7 +85,73 @@ jobs:
           }
           EOF
 
-          # AndroidManifest.xml
+          # 4. طراحي آیکون وکتور اختصاصی ساعت حرم مطهر (ic_launcher.xml)
+          cat << 'EOF' > app/src/main/res/drawable/ic_launcher_haram.xml
+          <vector xmlns:android="http://schemas.android.com/apk/res/android"
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+
+              <!-- پس‌زمینه فیروزه‌ای تیره -->
+              <path
+                  android:pathData="M0,0h108v108h-108z"
+                  android:fillColor="#042F2E" />
+
+              <!-- هاله نورانی گنبد و حریم حرم -->
+              <path
+                  android:pathData="M54,54m-46,0a46,46 0,1,1 92,0a46,46 0,1,1 -92,0"
+                  android:fillColor="#0F766E" />
+
+              <!-- بدنه و ایوان برج ساعت حرم -->
+              <path
+                  android:pathData="M34,42 L74,42 L70,96 L38,96 Z"
+                  android:fillColor="#115E59" />
+
+              <!-- قاب و کنگره‌های طلایی سنتی بالای ساعت -->
+              <path
+                  android:pathData="M30,42 L78,42 L74,34 L34,34 Z"
+                  android:fillColor="#D97706" />
+
+              <!-- گنبدک طلایی روی برج ساعت -->
+              <path
+                  android:pathData="M44,34 Q54,16 64,34 Z"
+                  android:fillColor="#F59E0B" />
+              <path
+                  android:pathData="M53,16 L55,16 L54,10 Z"
+                  android:fillColor="#FDE047" />
+
+              <!-- صفحه گرد ساعت حرم -->
+              <path
+                  android:pathData="M54,64m-18,0a18,18 0,1,1 36,0a18,18 0,1,1 -36,0"
+                  android:fillColor="#FEF3C7" />
+
+              <!-- حاشیه طلایی دور ساعت -->
+              <path
+                  android:pathData="M54,64m-18,0a18,18 0,1,1 36,0a18,18 0,1,1 -36,0"
+                  android:strokeColor="#D97706"
+                  android:strokeWidth="2.5" />
+
+              <!-- عقربه‌های ساعت حرم روی ساعت ۳ -->
+              <path
+                  android:pathData="M54,64 L54,52"
+                  android:strokeColor="#78350F"
+                  android:strokeWidth="2.5"
+                  android:strokeLineCap="round" />
+              <path
+                  android:pathData="M54,64 L64,64"
+                  android:strokeColor="#78350F"
+                  android:strokeWidth="2.5"
+                  android:strokeLineCap="round" />
+
+              <!-- مرکز عقربه‌ها -->
+              <path
+                  android:pathData="M54,64m-2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0"
+                  android:fillColor="#B45309" />
+          </vector>
+          EOF
+
+          # 5. AndroidManifest.xml متصل به آیکون جدید
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -91,12 +159,11 @@ jobs:
               <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
               <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
               <uses-permission android:name="android.permission.WAKE_LOCK" />
-              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32" />
 
               <application
                   android:allowBackup="true"
-                  android:icon="@android:drawable/ic_lock_idle_alarm"
-                  android:label="زنگ ساعتی حرم"
+                  android:icon="@drawable/ic_launcher_haram"
+                  android:label="ساعت حرم"
                   android:supportsRtl="true"
                   android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
 
@@ -127,7 +194,7 @@ jobs:
           </manifest>
           EOF
 
-          # MainActivity.kt
+          # 6. MainActivity.kt با Activity خالص
           cat << 'EOF' > app/src/main/java/com/example/hourlychime/MainActivity.kt
           package com.example.hourlychime
 
@@ -170,14 +237,14 @@ jobs:
                   val root = LinearLayout(this).apply {
                       orientation = LinearLayout.VERTICAL
                       gravity = Gravity.CENTER_HORIZONTAL
-                      setBackgroundColor(Color.parseColor("#0F172A"))
+                      setBackgroundColor(Color.parseColor("#042F2E"))
                       setPadding(40, 50, 40, 50)
                   }
 
                   val title = TextView(this).apply {
-                      text = "ساعت زنگ‌دار حرم"
+                      text = "ساعت حرم امام رضا (ع)"
                       textSize = 22f
-                      setTextColor(Color.parseColor("#38BDF8"))
+                      setTextColor(Color.parseColor("#FDE047"))
                       typeface = Typeface.DEFAULT_BOLD
                       gravity = Gravity.CENTER
                       setPadding(0, 0, 0, 20)
@@ -185,7 +252,7 @@ jobs:
 
                   val statusText = TextView(this).apply {
                       val active = prefs.getBoolean("is_alarm_active", false)
-                      text = if (active) "وضعیت: فعال (پخش سر ساعت)" else "وضعیت: غیرفعال"
+                      text = if (active) "وضعیت: فعال (پخش سر هر ساعت)" else "وضعیت: غیرفعال"
                       textSize = 15f
                       setTextColor(if (active) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8"))
                       gravity = Gravity.CENTER
@@ -195,7 +262,7 @@ jobs:
                   val btnToggle = Button(this).apply {
                       val isActive = prefs.getBoolean("is_alarm_active", false)
                       text = if (isActive) "خاموش کردن زنگ" else "روشن کردن زنگ ساعتی"
-                      setBackgroundColor(if (isActive) Color.parseColor("#DC2626") else Color.parseColor("#0284C7"))
+                      setBackgroundColor(if (isActive) Color.parseColor("#DC2626") else Color.parseColor("#0D9488"))
                       setTextColor(Color.WHITE)
 
                       setOnClickListener {
@@ -207,13 +274,13 @@ jobs:
                               HourlyChimeReceiver.scheduleNextChime(this@MainActivity)
                               text = "خاموش کردن زنگ"
                               setBackgroundColor(Color.parseColor("#DC2626"))
-                              statusText.text = "وضعیت: فعال (پخش سر ساعت)"
+                              statusText.text = "وضعیت: فعال (پخش سر هر ساعت)"
                               statusText.setTextColor(Color.parseColor("#4ADE80"))
                               Toast.makeText(this@MainActivity, "زنگ ساعتی فعال شد", Toast.LENGTH_SHORT).show()
                           } else {
                               HourlyChimeReceiver.cancelChime(this@MainActivity)
                               text = "روشن کردن زنگ ساعتی"
-                              setBackgroundColor(Color.parseColor("#0284C7"))
+                              setBackgroundColor(Color.parseColor("#0D9488"))
                               statusText.text = "وضعیت: غیرفعال"
                               statusText.setTextColor(Color.parseColor("#94A3B8"))
                               Toast.makeText(this@MainActivity, "زنگ غیرفعال شد", Toast.LENGTH_SHORT).show()
@@ -232,13 +299,13 @@ jobs:
                   }
 
                   val soundLabel = TextView(this).apply {
-                      text = "انتخاب نوع صدای زنگ:"
-                      setTextColor(Color.parseColor("#94A3B8"))
+                      text = "انتخاب نوای زنگ:"
+                      setTextColor(Color.parseColor("#99F6E4"))
                       textSize = 14f
                       setPadding(0, 20, 0, 10)
                   }
 
-                  val soundOptions = arrayOf("زنگ ناقوس حرم (عمیق)", "ساعت پاندولی کلاسیک", "بیپ دیجیتال", "فایل صوتی دلخواه از گوشی")
+                  val soundOptions = arrayOf("زنگ ناقوس ساعت حرم (اصلی)", "ساعت پاندولی کلاسیک", "بیپ آرام", "فایل صوتی انتخابی از گوشی")
                   val spinner = Spinner(this).apply {
                       val adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, soundOptions)
                       setAdapter(adapter)
@@ -252,9 +319,9 @@ jobs:
                   }
 
                   val btnPickAudio = Button(this).apply {
-                      text = "انتخاب فایل صوتی از حافظه..."
-                      setBackgroundColor(Color.parseColor("#1E293B"))
-                      setTextColor(Color.parseColor("#38BDF8"))
+                      text = "انتخاب فایل صوتی دلخواه..."
+                      setBackgroundColor(Color.parseColor("#115E59"))
+                      setTextColor(Color.parseColor("#FDE047"))
                       setOnClickListener {
                           val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                               addCategory(Intent.CATEGORY_OPENABLE)
@@ -266,14 +333,14 @@ jobs:
 
                   val btnTest = Button(this).apply {
                       text = "تست صدای ساعت جاری"
-                      setBackgroundColor(Color.parseColor("#334155"))
+                      setBackgroundColor(Color.parseColor("#1E293B"))
                       setTextColor(Color.parseColor("#CBD5E1"))
                       setOnClickListener {
                           val count = when (val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY) % 12) {
                               0 -> 12
                               else -> h
                           }
-                          Toast.makeText(this@MainActivity, "پخش $count ضربه با صدای انتخابی...", Toast.LENGTH_SHORT).show()
+                          Toast.makeText(this@MainActivity, "پخش $count ضربه زنگ...", Toast.LENGTH_SHORT).show()
                           HourlyChimeReceiver.playChime(this@MainActivity, count)
                       }
                   }
@@ -302,7 +369,7 @@ jobs:
                               .putString("custom_audio_uri", uri.toString())
                               .putInt("sound_type", 3)
                               .apply()
-                          Toast.makeText(this, "فایل صوتی با موفقیت تنظیم شد", Toast.LENGTH_SHORT).show()
+                          Toast.makeText(this, "فایل صوتی ذخیره شد", Toast.LENGTH_SHORT).show()
                       }
                   }
               }
@@ -349,9 +416,9 @@ jobs:
                                   }
                               } else {
                                   when (type) {
-                                      1 -> playSynthesizedTone(440.0, 2.5) // پاندولی بم
-                                      2 -> playSynthesizedTone(880.0, 8.0) // دیجیتال
-                                      else -> playSynthesizedTone(587.33, 3.8) // ناقوس حرم
+                                      1 -> playSynthesizedTone(440.0, 2.5)
+                                      2 -> playSynthesizedTone(880.0, 8.0)
+                                      else -> playSynthesizedTone(587.33, 3.8)
                                   }
                                   Thread.sleep(1200)
                               }
@@ -390,66 +457,4 @@ jobs:
                           .setTransferMode(AudioTrack.MODE_STATIC)
                           .build()
 
-                      track.write(buffer, 0, numSamples)
-                      track.play()
-                      Thread.sleep(1100)
-                      track.release()
-                  }
-
-                  fun scheduleNextChime(context: Context) {
-                      val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                      val intent = Intent(context, HourlyChimeReceiver::class.java)
-                      val pendingIntent = PendingIntent.getBroadcast(
-                          context, 1001, intent,
-                          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                      )
-                      val cal = Calendar.getInstance().apply {
-                          add(Calendar.HOUR_OF_DAY, 1)
-                          set(Calendar.MINUTE, 0)
-                          set(Calendar.SECOND, 0)
-                          set(Calendar.MILLISECOND, 0)
-                      }
-                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                          alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
-                      } else {
-                          alarmManager.setExact(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
-                      }
-                  }
-
-                  fun cancelChime(context: Context) {
-                      val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                      val intent = Intent(context, HourlyChimeReceiver::class.java)
-                      val pendingIntent = PendingIntent.getBroadcast(
-                          context, 1001, intent,
-                          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                      )
-                      alarmManager.cancel(pendingIntent)
-                  }
-              }
-          }
-
-          class BootReceiver : BroadcastReceiver() {
-              override fun onReceive(context: Context, intent: Intent) {
-                  if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == "android.intent.action.QUICKBOOT_POWERON") {
-                      val prefs = context.getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
-                      if (prefs.getBoolean("is_alarm_active", false)) {
-                          HourlyChimeReceiver.scheduleNextChime(context)
-                      }
-                  }
-              }
-          }
-          EOF
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.2'
-
-      - name: Build Debug APK
-        run: gradle assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: HourlyChime-CustomSound-APK
-          path: app/build/outputs/apk/debug/*.apk
+                      track.write(buffer, 0
