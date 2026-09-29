@@ -59,8 +59,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 10
-                  versionName "1.9"
+                  versionCode 11
+                  versionName "2.0"
               }
               buildTypes { release { minifyEnabled false } }
               compileOptions {
@@ -71,18 +71,104 @@ jobs:
           }
           EOF
 
+          # آیکون برج ساعت حرم با پس‌زمینه کاملاً سفید
           cat << 'EOF' > app/src/main/res/drawable/ic_launcher_haram.xml
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
-              android:width="108dp" android:height="108dp"
-              android:viewportWidth="108" android:viewportHeight="108">
-              <path android:pathData="M0,0h108v108h-108z" android:fillColor="#042F2E" />
-              <path android:pathData="M54,54m-46,0a46,46 0,1,1 92,0a46,46 0,1,1 -92,0" android:fillColor="#0F766E" />
-              <path android:pathData="M34,42 L74,42 L70,96 L38,96 Z" android:fillColor="#115E59" />
-              <path android:pathData="M30,42 L78,42 L74,34 L34,34 Z" android:fillColor="#D97706" />
-              <path android:pathData="M44,34 Q54,16 64,34 Z" android:fillColor="#F59E0B" />
-              <path android:pathData="M54,64m-18,0a18,18 0,1,1 36,0a18,18 0,1,1 -36,0" android:fillColor="#FEF3C7" />
-              <path android:pathData="M54,64 L54,52" android:strokeColor="#78350F" android:strokeWidth="2.5" />
-              <path android:pathData="M54,64 L64,64" android:strokeColor="#78350F" android:strokeWidth="2.5" />
+              android:width="108dp"
+              android:height="108dp"
+              android:viewportWidth="108"
+              android:viewportHeight="108">
+
+              <!-- پس زمینه کاملاً سفید -->
+              <path
+                  android:pathData="M0,0h108v108h-108z"
+                  android:fillColor="#FFFFFF" />
+
+              <!-- میله و هلال بالای گنبد -->
+              <path
+                  android:pathData="M54,4 L54,16"
+                  android:strokeColor="#64748B"
+                  android:strokeWidth="1.8" />
+              <path
+                  android:pathData="M54,6m-2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0"
+                  android:fillColor="#475569" />
+
+              <!-- گنبد فیروزه‌ای پیازی حرم مطهر -->
+              <path
+                  android:pathData="M34,36 C34,20 44,15 54,15 C64,15 74,20 74,36 Z"
+                  android:fillColor="#0EA5E9" />
+
+              <!-- خطوط اسلیمی و گره‌چینی سفید روی گنبد -->
+              <path
+                  android:pathData="M40,32 C48,22 60,22 68,32 M44,22 C50,30 58,30 64,22"
+                  android:strokeColor="#FFFFFF"
+                  android:strokeWidth="1.2"
+                  android:fillColor="#00000000" />
+
+              <!-- کتیبه طلایی دور گردن گنبد -->
+              <path
+                  android:pathData="M33,36 L75,36 L73,39 L35,39 Z"
+                  android:fillColor="#D97706" />
+
+              <!-- اتاقک اذان‌گو با پنجره‌های هلالی لاجوردی -->
+              <path
+                  android:pathData="M35,39 L73,39 L71,55 L37,55 Z"
+                  android:fillColor="#1E3A8A" />
+
+              <!-- بالکن بالایی با نرده‌های سفید مشبک -->
+              <path
+                  android:pathData="M27,55 L81,55 L79,59 L29,59 Z"
+                  android:fillColor="#E2E8F0" />
+              <path
+                  android:pathData="M27,55 L81,55"
+                  android:strokeColor="#94A3B8"
+                  android:strokeWidth="1" />
+
+              <!-- برج ۸ ضلعی ساعت با کاشی‌های لاجوردی و فیروزه‌ای -->
+              <path
+                  android:pathData="M36,59 L72,59 L68,88 L40,88 Z"
+                  android:fillColor="#1D4ED8" />
+
+              <!-- پنجره‌های باریک دو طرف ساعت -->
+              <path
+                  android:pathData="M39,69 L43,69 L43,81 L39,81 Z"
+                  android:fillColor="#BAE6FD" />
+              <path
+                  android:pathData="M65,69 L69,69 L69,81 L65,81 Z"
+                  android:fillColor="#BAE6FD" />
+
+              <!-- قاب و صفحه سفید ساعت حرم -->
+              <path
+                  android:pathData="M54,75m-12,0a12,12 0,1,1 24,0a12,12 0,1,1 -24,0"
+                  android:fillColor="#FFFBEB" />
+              <path
+                  android:pathData="M54,75m-12,0a12,12 0,1,1 24,0a12,12 0,1,1 -24,0"
+                  android:strokeColor="#D97706"
+                  android:strokeWidth="2" />
+
+              <!-- عقربه‌های ساعت حرم -->
+              <path
+                  android:pathData="M54,75 L54,67"
+                  android:strokeColor="#0F172A"
+                  android:strokeWidth="2"
+                  android:strokeLineCap="round" />
+              <path
+                  android:pathData="M54,75 L61,75"
+                  android:strokeColor="#0F172A"
+                  android:strokeWidth="1.8"
+                  android:strokeLineCap="round" />
+              <path
+                  android:pathData="M54,75m-1.5,0a1.5,1.5 0,1,1 3,0a1.5,1.5 0,1,1 -3,0"
+                  android:fillColor="#78350F" />
+
+              <!-- مقرنس‌ها و بالکن پایینی مناره ساعت -->
+              <path
+                  android:pathData="M25,88 L83,88 L77,98 L31,98 Z"
+                  android:fillColor="#0284C7" />
+              <path
+                  android:pathData="M25,88 L83,88"
+                  android:strokeColor="#E2E8F0"
+                  android:strokeWidth="2" />
           </vector>
           EOF
 
@@ -169,6 +255,9 @@ jobs:
                       text = "بی‌صدا در شب (۲۳:۰۰ الی ۰۷:۰۰)"; setTextColor(Color.parseColor("#E2E8F0")); isChecked = prefs.getBoolean("quiet", true); setPadding(0, 5, 0, 20)
                       setOnCheckedChangeListener { _, c -> prefs.edit().putBoolean("quiet", c).apply() }
                   }
+                  val soundLabel = TextView(this).apply {
+                      text = "انتخاب نوای زنگ:"; setTextColor(Color.parseColor("#BAE6FD")); setPadding(0, 15, 0, 5)
+                  }
                   val spSound = Spinner(this).apply {
                       adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("ناقوس ساعت حرم", "پاندولی سنتی", "بیپ آرام", "فایل صوتی شخصی"))
                       setSelection(prefs.getInt("snd_type", 0))
@@ -176,6 +265,9 @@ jobs:
                           override fun onItemSelected(p0: AdapterView<*>?, p1: android.view.View?, pos: Int, id: Long) { prefs.edit().putInt("snd_type", pos).apply() }
                           override fun onNothingSelected(p0: AdapterView<*>?) {}
                       }
+                  }
+                  val intervalLabel = TextView(this).apply {
+                      text = "فاصله بین ضربات:"; setTextColor(Color.parseColor("#BAE6FD")); setPadding(0, 15, 0, 5)
                   }
                   val intervalVals = longArrayOf(0L, 500L, 1000L, 1500L, 2000L)
                   val spInterval = Spinner(this).apply {
@@ -205,8 +297,8 @@ jobs:
                       setOnClickListener { HourlyReceiver.play(this@MainActivity, 1) }
                   }
                   root.addView(title); root.addView(statusText); root.addView(btnToggle)
-                  root.addView(chkHalf); root.addView(chkQuiet); root.addView(spSound); root.addView(spInterval)
-                  root.addView(btnFile); root.addView(btnTest); root.addView(btnTestHalf)
+                  root.addView(chkHalf); root.addView(chkQuiet); root.addView(soundLabel); root.addView(spSound)
+                  root.addView(intervalLabel); root.addView(spInterval); root.addView(btnFile); root.addView(btnTest); root.addView(btnTestHalf)
                   scroll.addView(root); setContentView(scroll)
               }
               override fun onActivityResult(req: Int, res: Int, data: Intent?) {
@@ -285,27 +377,4 @@ jobs:
                   }
                   fun cancel(context: Context) {
                       val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                      am.cancel(PendingIntent.getBroadcast(context, 101, Intent(context, HourlyReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
-                  }
-              }
-          }
-
-          class BootReceiver : BroadcastReceiver() {
-              override fun onReceive(context: Context, intent: Intent) {
-                  if (intent.action == Intent.ACTION_BOOT_COMPLETED) {
-                      if (context.getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE).getBoolean("active", false)) {
-                          HourlyReceiver.schedule(context)
-                      }
-                  }
-              }
-          }
-          EOF
-
-          gradle assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: HaramClock-App-APK
-          path: app/build/outputs/apk/debug/*.apk
           
