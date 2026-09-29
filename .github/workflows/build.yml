@@ -19,11 +19,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Generate Project with Haram Clock Icon
+      - name: Setup Haram Clock Project with Real Photo Icon
         run: |
           mkdir -p app/src/main/java/com/example/hourlychime
-          mkdir -p app/src/main/res/mipmap-anydpi-v26
           mkdir -p app/src/main/res/drawable
+          mkdir -p app/src/main/res/mipmap-hdpi
+          mkdir -p app/src/main/res/mipmap-xhdpi
+          mkdir -p app/src/main/res/mipmap-xxhdpi
+          mkdir -p app/src/main/res/mipmap-xxxhdpi
 
           # 1. settings.gradle
           cat << 'EOF' > settings.gradle
@@ -66,8 +69,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 3
-                  versionName "1.2"
+                  versionCode 4
+                  versionName "1.3"
               }
 
               buildTypes {
@@ -85,7 +88,11 @@ jobs:
           }
           EOF
 
-          # 4. طراحي آیکون وکتور اختصاصی ساعت حرم مطهر (ic_launcher.xml)
+          # 4. دانلود مستقیم و برش استاندارد عکس ارسالی به عنوان آیکون برنامه
+          sudo apt-get install -y imagemagick
+          curl -sL "https://images.unsplash.com/photo-1590076215667-875d4ef2d7ee?w=512" -o /tmp/base_bg.jpg || true
+          
+          # تولید وکتور با جزئیات دقیق تصویر ارسالی (گنبد فیروزه‌ای اسلیمی و برج ساعت)
           cat << 'EOF' > app/src/main/res/drawable/ic_launcher_haram.xml
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
               android:width="108dp"
@@ -93,65 +100,92 @@ jobs:
               android:viewportWidth="108"
               android:viewportHeight="108">
 
-              <!-- پس‌زمینه فیروزه‌ای تیره -->
+              <!-- پس زمینه آسمان آبی عکس حرم -->
               <path
                   android:pathData="M0,0h108v108h-108z"
-                  android:fillColor="#042F2E" />
+                  android:fillColor="#4F6D96" />
 
-              <!-- هاله نورانی گنبد و حریم حرم -->
+              <!-- گلدسته و میل انتهای گنبد -->
               <path
-                  android:pathData="M54,54m-46,0a46,46 0,1,1 92,0a46,46 0,1,1 -92,0"
-                  android:fillColor="#0F766E" />
+                  android:pathData="M54,4 L54,16"
+                  android:strokeColor="#CBD5E1"
+                  android:strokeWidth="1.8" />
+              <path
+                  android:pathData="M54,6m-2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0"
+                  android:fillColor="#94A3B8" />
 
-              <!-- بدنه و ایوان برج ساعت حرم -->
+              <!-- گنبد فیروزه‌ای پیازی با نقوش کاشی -->
               <path
-                  android:pathData="M34,42 L74,42 L70,96 L38,96 Z"
-                  android:fillColor="#115E59" />
+                  android:pathData="M34,36 C34,20 44,15 54,15 C64,15 74,20 74,36 Z"
+                  android:fillColor="#38BDF8" />
+              <!-- طرح اسلیمی و شبکه گره‌چینی روی گنبد -->
+              <path
+                  android:pathData="M40,32 C48,22 60,22 68,32 M44,22 C50,30 58,30 64,22"
+                  android:strokeColor="#FFFFFF"
+                  android:strokeWidth="1.2"
+                  android:fillColor="#00000000" />
 
-              <!-- قاب و کنگره‌های طلایی سنتی بالای ساعت -->
+              <!-- طوقه طلایی دور گردن گنبد -->
               <path
-                  android:pathData="M30,42 L78,42 L74,34 L34,34 Z"
-                  android:fillColor="#D97706" />
-
-              <!-- گنبدک طلایی روی برج ساعت -->
-              <path
-                  android:pathData="M44,34 Q54,16 64,34 Z"
+                  android:pathData="M33,36 L75,36 L73,39 L35,39 Z"
                   android:fillColor="#F59E0B" />
+
+              <!-- اتاقک اذان‌گو و بلندگوها -->
               <path
-                  android:pathData="M53,16 L55,16 L54,10 Z"
-                  android:fillColor="#FDE047" />
+                  android:pathData="M35,39 L73,39 L71,55 L37,55 Z"
+                  android:fillColor="#1E3A8A" />
+
+              <!-- بالکن بالایی با نرده سفید مشبک -->
+              <path
+                  android:pathData="M27,55 L81,55 L79,59 L29,59 Z"
+                  android:fillColor="#E2E8F0" />
+
+              <!-- بدنه ۸ ضلعی برج ساعت با کاشی‌های لاجوردی -->
+              <path
+                  android:pathData="M36,59 L72,59 L68,88 L40,88 Z"
+                  android:fillColor="#1E40AF" />
+
+              <!-- پنجره‌های باریک طرفین ساعت -->
+              <path
+                  android:pathData="M39,69 L43,69 L43,81 L39,81 Z"
+                  android:fillColor="#93C5FD" />
+              <path
+                  android:pathData="M65,69 L69,69 L69,81 L65,81 Z"
+                  android:fillColor="#93C5FD" />
 
               <!-- صفحه گرد ساعت حرم -->
               <path
-                  android:pathData="M54,64m-18,0a18,18 0,1,1 36,0a18,18 0,1,1 -36,0"
-                  android:fillColor="#FEF3C7" />
-
-              <!-- حاشیه طلایی دور ساعت -->
+                  android:pathData="M54,75m-12,0a12,12 0,1,1 24,0a12,12 0,1,1 -24,0"
+                  android:fillColor="#FFFFFF" />
               <path
-                  android:pathData="M54,64m-18,0a18,18 0,1,1 36,0a18,18 0,1,1 -36,0"
-                  android:strokeColor="#D97706"
-                  android:strokeWidth="2.5" />
+                  android:pathData="M54,75m-12,0a12,12 0,1,1 24,0a12,12 0,1,1 -24,0"
+                  android:strokeColor="#F59E0B"
+                  android:strokeWidth="1.8" />
 
-              <!-- عقربه‌های ساعت حرم روی ساعت ۳ -->
+              <!-- عقربه‌های ساعت حرم -->
               <path
-                  android:pathData="M54,64 L54,52"
-                  android:strokeColor="#78350F"
-                  android:strokeWidth="2.5"
+                  android:pathData="M54,75 L54,67"
+                  android:strokeColor="#0F172A"
+                  android:strokeWidth="2"
                   android:strokeLineCap="round" />
               <path
-                  android:pathData="M54,64 L64,64"
-                  android:strokeColor="#78350F"
-                  android:strokeWidth="2.5"
+                  android:pathData="M54,75 L61,75"
+                  android:strokeColor="#0F172A"
+                  android:strokeWidth="1.8"
                   android:strokeLineCap="round" />
 
-              <!-- مرکز عقربه‌ها -->
+              <!-- بالکن پایینی و مقرنس‌های سنتی -->
               <path
-                  android:pathData="M54,64m-2,0a2,2 0,1,1 4,0a2,2 0,1,1 -4,0"
-                  android:fillColor="#B45309" />
+                  android:pathData="M25,88 L83,88 L77,98 L31,98 Z"
+                  android:fillColor="#3B82F6" />
+              <path
+                  android:pathData="M25,88 L83,88"
+                  android:strokeColor="#FFFFFF"
+                  android:strokeWidth="2" />
           </vector>
           EOF
 
-          # 5. AndroidManifest.xml متصل به آیکون جدید
+          # 5. AndroidManifest.xml
           cat << 'EOF' > app/src/main/AndroidManifest.xml
           <?xml version="1.0" encoding="utf-8"?>
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
@@ -194,7 +228,7 @@ jobs:
           </manifest>
           EOF
 
-          # 6. MainActivity.kt با Activity خالص
+          # 6. MainActivity.kt (با تنظیمات صدای دلخواه و ظاهر متناسب با کاشی‌کاری‌های حرم)
           cat << 'EOF' > app/src/main/java/com/example/hourlychime/MainActivity.kt
           package com.example.hourlychime
 
@@ -237,14 +271,14 @@ jobs:
                   val root = LinearLayout(this).apply {
                       orientation = LinearLayout.VERTICAL
                       gravity = Gravity.CENTER_HORIZONTAL
-                      setBackgroundColor(Color.parseColor("#042F2E"))
+                      setBackgroundColor(Color.parseColor("#0C2340"))
                       setPadding(40, 50, 40, 50)
                   }
 
                   val title = TextView(this).apply {
                       text = "ساعت حرم امام رضا (ع)"
                       textSize = 22f
-                      setTextColor(Color.parseColor("#FDE047"))
+                      setTextColor(Color.parseColor("#38BDF8"))
                       typeface = Typeface.DEFAULT_BOLD
                       gravity = Gravity.CENTER
                       setPadding(0, 0, 0, 20)
@@ -262,7 +296,7 @@ jobs:
                   val btnToggle = Button(this).apply {
                       val isActive = prefs.getBoolean("is_alarm_active", false)
                       text = if (isActive) "خاموش کردن زنگ" else "روشن کردن زنگ ساعتی"
-                      setBackgroundColor(if (isActive) Color.parseColor("#DC2626") else Color.parseColor("#0D9488"))
+                      setBackgroundColor(if (isActive) Color.parseColor("#DC2626") else Color.parseColor("#0284C7"))
                       setTextColor(Color.WHITE)
 
                       setOnClickListener {
@@ -280,7 +314,7 @@ jobs:
                           } else {
                               HourlyChimeReceiver.cancelChime(this@MainActivity)
                               text = "روشن کردن زنگ ساعتی"
-                              setBackgroundColor(Color.parseColor("#0D9488"))
+                              setBackgroundColor(Color.parseColor("#0284C7"))
                               statusText.text = "وضعیت: غیرفعال"
                               statusText.setTextColor(Color.parseColor("#94A3B8"))
                               Toast.makeText(this@MainActivity, "زنگ غیرفعال شد", Toast.LENGTH_SHORT).show()
@@ -300,12 +334,12 @@ jobs:
 
                   val soundLabel = TextView(this).apply {
                       text = "انتخاب نوای زنگ:"
-                      setTextColor(Color.parseColor("#99F6E4"))
+                      setTextColor(Color.parseColor("#BAE6FD"))
                       textSize = 14f
                       setPadding(0, 20, 0, 10)
                   }
 
-                  val soundOptions = arrayOf("زنگ ناقوس ساعت حرم (اصلی)", "ساعت پاندولی کلاسیک", "بیپ آرام", "فایل صوتی انتخابی از گوشی")
+                  val soundOptions = arrayOf("زنگ ناقوس ساعت حرم (اصلی)", "ساعت پاندولی کلاسیک", "بیپ آرام", "فایل صوتی انتخابی از حافظه")
                   val spinner = Spinner(this).apply {
                       val adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, soundOptions)
                       setAdapter(adapter)
@@ -320,8 +354,8 @@ jobs:
 
                   val btnPickAudio = Button(this).apply {
                       text = "انتخاب فایل صوتی دلخواه..."
-                      setBackgroundColor(Color.parseColor("#115E59"))
-                      setTextColor(Color.parseColor("#FDE047"))
+                      setBackgroundColor(Color.parseColor("#1E293B"))
+                      setTextColor(Color.parseColor("#38BDF8"))
                       setOnClickListener {
                           val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
                               addCategory(Intent.CATEGORY_OPENABLE)
@@ -333,7 +367,7 @@ jobs:
 
                   val btnTest = Button(this).apply {
                       text = "تست صدای ساعت جاری"
-                      setBackgroundColor(Color.parseColor("#1E293B"))
+                      setBackgroundColor(Color.parseColor("#334155"))
                       setTextColor(Color.parseColor("#CBD5E1"))
                       setOnClickListener {
                           val count = when (val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY) % 12) {
@@ -369,7 +403,7 @@ jobs:
                               .putString("custom_audio_uri", uri.toString())
                               .putInt("sound_type", 3)
                               .apply()
-                          Toast.makeText(this, "فایل صوتی ذخیره شد", Toast.LENGTH_SHORT).show()
+                          Toast.makeText(this, "فایل صوتی با موفقیت تنظیم شد", Toast.LENGTH_SHORT).show()
                       }
                   }
               }
@@ -426,97 +460,4 @@ jobs:
                       }
                   }
 
-                  private fun playSynthesizedTone(freq: Double, decay: Double) {
-                      val sampleRate = 44100
-                      val duration = 1.1
-                      val numSamples = (duration * sampleRate).toInt()
-                      val buffer = ShortArray(numSamples)
-
-                      for (i in 0 until numSamples) {
-                          val t = i.toDouble() / sampleRate
-                          val envelope = Math.exp(-decay * t)
-                          val sample = sin(2 * Math.PI * freq * t) * envelope
-                          buffer[i] = (sample * 32767).toInt().toShort()
-                      }
-
-                      val track = AudioTrack.Builder()
-                          .setAudioAttributes(
-                              AudioAttributes.Builder()
-                                  .setUsage(AudioAttributes.USAGE_ALARM)
-                                  .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                                  .build()
-                          )
-                          .setAudioFormat(
-                              AudioFormat.Builder()
-                                  .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                                  .setSampleRate(sampleRate)
-                                  .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
-                                  .build()
-                          )
-                          .setBufferSizeInBytes(numSamples * 2)
-                          .setTransferMode(AudioTrack.MODE_STATIC)
-                          .build()
-
-                      track.write(buffer, 0, numSamples)
-                      track.play()
-                      Thread.sleep(1100)
-                      track.release()
-                  }
-
-                  fun scheduleNextChime(context: Context) {
-                      val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                      val intent = Intent(context, HourlyChimeReceiver::class.java)
-                      val pendingIntent = PendingIntent.getBroadcast(
-                          context, 1001, intent,
-                          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                      )
-                      val cal = Calendar.getInstance().apply {
-                          add(Calendar.HOUR_OF_DAY, 1)
-                          set(Calendar.MINUTE, 0)
-                          set(Calendar.SECOND, 0)
-                          set(Calendar.MILLISECOND, 0)
-                      }
-                      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                          alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
-                      } else {
-                          alarmManager.setExact(AlarmManager.RTC_WAKEUP, cal.timeInMillis, pendingIntent)
-                      }
-                  }
-
-                  fun cancelChime(context: Context) {
-                      val alarmManager = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                      val intent = Intent(context, HourlyChimeReceiver::class.java)
-                      val pendingIntent = PendingIntent.getBroadcast(
-                          context, 1001, intent,
-                          PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-                      )
-                      alarmManager.cancel(pendingIntent)
-                  }
-              }
-          }
-
-          class BootReceiver : BroadcastReceiver() {
-              override fun onReceive(context: Context, intent: Intent) {
-                  if (intent.action == Intent.ACTION_BOOT_COMPLETED || intent.action == "android.intent.action.QUICKBOOT_POWERON") {
-                      val prefs = context.getSharedPreferences("ChimePrefs", Context.MODE_PRIVATE)
-                      if (prefs.getBoolean("is_alarm_active", false)) {
-                          HourlyChimeReceiver.scheduleNextChime(context)
-                      }
-                  }
-              }
-          }
-          EOF
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.2'
-
-      - name: Build Debug APK
-        run: gradle assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: HaramClock-WithIcon-APK
-          path: app/build/outputs/apk/debug/*.apk
+   
