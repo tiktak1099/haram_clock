@@ -24,10 +24,14 @@ jobs:
         with:
           gradle-version: '8.2'
 
-      - name: Create Base Project
+      - name: Build App Project
         run: |
           mkdir -p app/src/main/java/com/example/hourlychime
           mkdir -p app/src/main/res/drawable
+          mkdir -p app/src/main/res/raw
+
+          # دانلود فایل صوتی صلوات خاصه امام رضا
+          curl -sL "https://sedatoseda.com/wp-content/uploads/Salavat.Emam_.Reza_.1.mp3" -o app/src/main/res/raw/salawat.mp3 || true
 
           cat << 'EOF' > settings.gradle
           rootProject.name = "HourlyChimeApp"
@@ -57,8 +61,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 13
-                  versionName "2.0"
+                  versionCode 15
+                  versionName "2.2"
               }
               buildTypes { release { minifyEnabled false } }
               compileOptions {
@@ -116,6 +120,7 @@ jobs:
               <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
               <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
               <uses-permission android:name="android.permission.WAKE_LOCK" />
+              <uses-permission android:name="android.permission.READ_PHONE_STATE" />
               <application
                   android:allowBackup="true"
                   android:icon="@drawable/ic_launcher_haram"
@@ -144,6 +149,7 @@ jobs:
           import android.media.*
           import android.net.Uri
           import android.os.*
+          import android.telephony.TelephonyManager
           import android.view.Gravity
           import android.widget.*
           import java.util.Calendar
@@ -152,6 +158,8 @@ jobs:
 
           class MainActivity : Activity() {
               private val REQ = 999
+              private var btnTestRef: Button? = null
+
               override fun onCreate(b: Bundle?) {
                   super.onCreate(b)
                   val p = getSharedPreferences("P", 0)
@@ -161,7 +169,8 @@ jobs:
                   }
                   val ll = LinearLayout(this).apply { orientation = 1; gravity = Gravity.CENTER_HORIZONTAL; setPadding(40, 50, 40, 50) }
                   val t = TextView(this).apply { text = "ساعت حرم امام رضا (ع)"; textSize = 22f; setTextColor(Color.parseColor("#38BDF8")); typeface = Typeface.DEFAULT_BOLD; gravity = 1 }
-                  val st = TextView(this).apply { text = if (p.getBoolean("on", false)) "وضعیت: فعال (سر ساعت و نیم‌ساعت)" else "وضعیت: غیرفعال"; textSize = 15f; setTextColor(if (p.getBoolean("on", false)) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8")); gravity = 1; setPadding(0, 10, 0, 25) }
+                  val st = TextView(this).apply { text = if (p.getBoolean("on", false)) "وضعیت: فعال (سر ساعت، نیم‌ساعت و ساعت ۸)" else "وضعیت: غیرفعال"; textSize = 14f; setTextColor(if (p.getBoolean("on", false)) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8")); gravity = 1; setPadding(0, 10, 0, 25) }
+
                   val btn = Button(this).apply {
                       val on = p.getBoolean("on", false)
                       text = if (on) "خاموش کردن زنگ" else "روشن کردن زنگ ساعتی"
@@ -173,7 +182,7 @@ jobs:
                           if (n) {
                               HourlyReceiver.sch(this@MainActivity)
                               text = "خاموش کردن زنگ"; setBackgroundColor(Color.parseColor("#DC2626"))
-                              st.text = "وضعیت: فعال (سر ساعت و نیم‌ساعت)"; st.setTextColor(Color.parseColor("#4ADE80"))
+                              st.text = "وضعیت: فعال (سر ساعت، نیم‌ساعت و ساعت ۸)"; st.setTextColor(Color.parseColor("#4ADE80"))
                           } else {
                               HourlyReceiver.can(this@MainActivity)
                               text = "روشن کردن زنگ ساعتی"; setBackgroundColor(Color.parseColor("#0284C7"))
@@ -181,8 +190,18 @@ jobs:
                           }
                       }
                   }
+
+                  val chSalawat = CheckBox(this).apply {
+                      text = "پخش صلوات خاصه در ساعت ۸ و ۲۰ (صبح و شب)"
+                      setTextColor(Color.parseColor("#34D399"))
+                      isChecked = p.getBoolean("salawat_8", true)
+                      setPadding(0, 15, 0, 5)
+                      setOnCheckedChangeListener { _, c -> p.edit().putBoolean("salawat_8", c).apply() }
+                  }
+
                   val ch = CheckBox(this).apply { text = "تک‌زنگ در دقیقه ۳۰ (نیم‌ساعت)"; setTextColor(Color.parseColor("#FDE047")); isChecked = p.getBoolean("half", true); setOnCheckedChangeListener { _, c -> p.edit().putBoolean("half", c).apply() } }
                   val cq = CheckBox(this).apply { text = "بی‌صدا در شب (۲۳:۰۰ الی ۰۷:۰۰)"; setTextColor(Color.parseColor("#E2E8F0")); isChecked = p.getBoolean("q", true); setOnCheckedChangeListener { _, c -> p.edit().putBoolean("q", c).apply() } }
+
                   val spSnd = Spinner(this).apply {
                       adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("ناقوس ساعت حرم", "پاندولی کلاسیک", "بیپ آرام", "فایل دلخواه گوشی"))
                       setSelection(p.getInt("snd", 0))
@@ -191,6 +210,7 @@ jobs:
                           override fun onNothingSelected(p0: AdapterView<*>?) {}
                       }
                   }
+
                   val vals = longArrayOf(0L, 500L, 1000L, 1500L, 2000L)
                   val spGap = Spinner(this).apply {
                       adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("بدون فاصله (۰ ثانیه)", "۰.۵ ثانیه", "۱ ثانیه", "۱.۵ ثانیه", "۲ ثانیه"))
@@ -202,14 +222,66 @@ jobs:
                           override fun onNothingSelected(p0: AdapterView<*>?) {}
                       }
                   }
-                  val btnF = Button(this).apply { text = "انتخاب فایل صوتی دلخواه..."; setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#38BDF8")); setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ) } }
-                  val btnT = Button(this).apply { text = "تست صدای ساعت جاری"; setBackgroundColor(Color.parseColor("#334155")); setTextColor(Color.WHITE); setOnClickListener { val h = Calendar.getInstance().get(11) % 12; HourlyReceiver.play(this@MainActivity, if (h == 0) 12 else h) } }
-                  val btnTH = Button(this).apply { text = "تست تک‌زنگ نیم‌ساعت"; setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#FDE047")); setOnClickListener { HourlyReceiver.play(this@MainActivity, 1) } }
 
-                  ll.addView(t); ll.addView(st); ll.addView(btn); ll.addView(ch); ll.addView(cq)
-                  ll.addView(spSnd); ll.addView(spGap); ll.addView(btnF); ll.addView(btnT); ll.addView(btnTH)
+                  val btnF = Button(this).apply { text = "انتخاب فایل صوتی دلخواه..."; setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#38BDF8")); setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ) } }
+
+                  val btnT = Button(this).apply {
+                      btnTestRef = this
+                      text = "تست صدای ساعت جاری"
+                      setBackgroundColor(Color.parseColor("#334155"))
+                      setTextColor(Color.WHITE)
+                      setOnClickListener {
+                          if (HourlyReceiver.isPlaying) {
+                              HourlyReceiver.stop()
+                              text = "تست صدای ساعت جاری"
+                              setBackgroundColor(Color.parseColor("#334155"))
+                          } else {
+                              val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY) % 12
+                              text = "توقف تست"
+                              setBackgroundColor(Color.parseColor("#B91C1C"))
+                              HourlyReceiver.play(this@MainActivity, if (h == 0) 12 else h) {
+                                  runOnUiThread { text = "تست صدای ساعت جاری"; setBackgroundColor(Color.parseColor("#334155")) }
+                              }
+                          }
+                      }
+                  }
+
+                  val btnTSalawat = Button(this).apply {
+                      text = "تست نوای صلوات خاصه امام رضا (ع)"
+                      setBackgroundColor(Color.parseColor("#065F46"))
+                      setTextColor(Color.parseColor("#34D399"))
+                      setOnClickListener {
+                          HourlyReceiver.stop()
+                          btnTestRef?.text = "تست صدای ساعت جاری"
+                          btnTestRef?.setBackgroundColor(Color.parseColor("#334155"))
+                          HourlyReceiver.playSalawat(this@MainActivity)
+                      }
+                  }
+
+                  val btnTH = Button(this).apply {
+                      text = "تست تک‌زنگ نیم‌‌ساعت"
+                      setBackgroundColor(Color.parseColor("#1E293B"))
+                      setTextColor(Color.parseColor("#FDE047"))
+                      setOnClickListener {
+                          HourlyReceiver.stop()
+                          btnTestRef?.text = "تست صدای ساعت جاری"
+                          btnTestRef?.setBackgroundColor(Color.parseColor("#334155"))
+                          HourlyReceiver.play(this@MainActivity, 1) {}
+                      }
+                  }
+
+                  ll.addView(t); ll.addView(st); ll.addView(btn); ll.addView(chSalawat); ll.addView(ch); ll.addView(cq)
+                  ll.addView(spSnd); ll.addView(spGap); ll.addView(btnF); ll.addView(btnT); ll.addView(btnTSalawat); ll.addView(btnTH)
                   sv.addView(ll); setContentView(sv)
               }
+
+              override fun onPause() {
+                  super.onPause()
+                  HourlyReceiver.stop()
+                  btnTestRef?.text = "تست صدای ساعت جاری"
+                  btnTestRef?.setBackgroundColor(Color.parseColor("#334155"))
+              }
+
               override fun onActivityResult(req: Int, res: Int, d: Intent?) {
                   super.onActivityResult(req, res, d)
                   if (req == REQ && res == RESULT_OK) {
@@ -224,74 +296,74 @@ jobs:
 
           class HourlyReceiver : BroadcastReceiver() {
               override fun onReceive(c: Context, i: Intent) {
-                  val cal = Calendar.getInstance()
-                  val h = cal.get(11); val m = cal.get(12)
-                  val p = c.getSharedPreferences("P", 0)
-                  if (!(p.getBoolean("q", true) && (h >= 23 || h < 7))) {
-                      if (m in 25..35) { if (p.getBoolean("half", true)) play(c, 1) }
-                      else { val c12 = h % 12; play(c, if (c12 == 0) 12 else c12) }
-                  }
-                  sch(c)
-              }
-              companion object {
-                  fun play(c: Context, r: Int) {
-                      val p = c.getSharedPreferences("P", 0)
-                      val s = p.getInt("snd", 0); val u = p.getString("uri", null); val g = p.getLong("gap", 1000L)
-                      thread {
-                          for (idx in 0 until r) {
-                              if (s == 3 && u != null) {
-                                  try {
-                                      val mp = MediaPlayer.create(c, Uri.parse(u))
-                                      mp?.start()
-                                      Thread.sleep((mp?.duration?.toLong() ?: 1000L) + g)
-                                      mp?.release()
-                                  } catch (_: Exception) { sndTone(587.33, g) }
+                  val pm = c.getSystemService(Context.POWER_SERVICE) as PowerManager
+                  val wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "HaramClock:ChimeLock")
+                  wl.acquire(60000L)
+
+                  try {
+                      val tm = c.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+                      if (tm == null || tm.callState == TelephonyManager.CALL_STATE_IDLE) {
+                          val cal = Calendar.getInstance()
+                          val h = cal.get(Calendar.HOUR_OF_DAY)
+                          val m = cal.get(Calendar.MINUTE)
+                          val p = c.getSharedPreferences("P", 0)
+
+                          if (m in 0..5 && (h == 8 || h == 20) && p.getBoolean("salawat_8", true)) {
+                              playSalawat(c)
+                          } else if (!(p.getBoolean("q", true) && (h >= 23 || h < 7))) {
+                              if (m in 25..35) {
+                                  if (p.getBoolean("half", true)) play(c, 1) {}
                               } else {
-                                  sndTone(if (s == 1) 440.0 else if (s == 2) 880.0 else 587.33, g)
+                                  val c12 = h % 12
+                                  play(c, if (c12 == 0) 12 else c12) {}
                               }
                           }
                       }
+                  } finally {
+                      sch(c)
+                      if (wl.isHeld) wl.release()
                   }
-                  private fun sndTone(f: Double, g: Long) {
-                      val sr = 44100; val dur = 0.8; val n = (dur * sr).toInt(); val b = ShortArray(n)
-                      for (i in 0 until n) { val t = i.toDouble() / sr; b[i] = (sin(2 * Math.PI * f * t) * Math.exp(-3.5 * t) * 32767).toInt().toShort() }
-                      val tr = AudioTrack.Builder().setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
-                          .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(sr).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-                          .setBufferSizeInBytes(n * 2).setTransferMode(AudioTrack.MODE_STATIC).build()
-                      tr.write(b, 0, n); tr.play(); Thread.sleep((dur * 1000).toLong() + g); tr.release()
+              }
+
+              companion object {
+                  @Volatile var isPlaying = false
+                  private var currentMp: MediaPlayer? = null
+                  private var currentTrack: AudioTrack? = null
+
+                  fun stop() {
+                      isPlaying = false
+                      try {
+                          currentMp?.stop()
+                          currentMp?.release()
+                      } catch (_: Exception) {}
+                      currentMp = null
+
+                      try {
+                          currentTrack?.stop()
+                          currentTrack?.release()
+                      } catch (_: Exception) {}
+                      currentTrack = null
                   }
-                  fun sch(c: Context) {
-                      val am = c.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                      val pi = PendingIntent.getBroadcast(c, 101, Intent(c, HourlyReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
-                      val next = Calendar.getInstance().apply {
-                          set(13, 0); set(14, 0)
-                          if (get(12) < 30) set(12, 30) else { add(11, 1); set(12, 0) }
+
+                  fun playSalawat(c: Context) {
+                      stop()
+                      isPlaying = true
+                      thread {
+                          try {
+                              val resId = c.resources.getIdentifier("salawat", "raw", c.packageName)
+                              if (resId != 0) {
+                                  val mp = MediaPlayer.create(c, resId)
+                                  currentMp = mp
+                                  mp?.start()
+                                  while (mp != null && mp.isPlaying && isPlaying) {
+                                      Thread.sleep(200)
+                                  }
+                                  mp?.release()
+                                  currentMp = null
+                              }
+                          } catch (_: Exception) {}
+                          finally { isPlaying = false }
                       }
-                      if (Build.VERSION.SDK_INT >= 23) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, next.timeInMillis, pi)
-                      else am.setExact(AlarmManager.RTC_WAKEUP, next.timeInMillis, pi)
                   }
-                  fun can(c: Context) {
-                      val am = c.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-                      am.cancel(PendingIntent.getBroadcast(c, 101, Intent(c, HourlyReceiver::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE))
-                  }
-              }
-          }
 
-          class BootReceiver : BroadcastReceiver() {
-              override fun onReceive(c: Context, i: Intent) {
-                  if (i.action == Intent.ACTION_BOOT_COMPLETED && c.getSharedPreferences("P", 0).getBoolean("on", false)) {
-                      HourlyReceiver.sch(c)
-                  }
-              }
-          }
-          EOF
-
-      - name: Build Debug APK
-        run: gradle assembleDebug
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: HaramClock-v2.0-APK
-          path: app/build/outputs/apk/debug/*.apk
-          
+                  fun play(c: Context, r: Int, on
