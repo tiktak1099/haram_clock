@@ -30,7 +30,7 @@ jobs:
           mkdir -p app/src/main/res/drawable
           mkdir -p app/src/main/res/raw
 
-          # کپی فایل‌های saat و salavat به عنوان منابع پیش‌فرض درون APK
+          # کپی فایل‌های صوتی موجود در مخزن
           cp saat.mp3 app/src/main/res/raw/saat.mp3 2>/dev/null || cp hour.mp3 app/src/main/res/raw/saat.mp3 2>/dev/null || true
           cp salavat.mp3 app/src/main/res/raw/salavat.mp3 2>/dev/null || true
 
@@ -60,8 +60,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 18
-                  versionName "2.5"
+                  versionCode 19
+                  versionName "3.0"
               }
               buildTypes { release { minifyEnabled false } }
               compileOptions {
@@ -117,7 +117,6 @@ jobs:
               <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
               <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
               <uses-permission android:name="android.permission.WAKE_LOCK" />
-              <uses-permission android:name="android.permission.READ_PHONE_STATE" />
               <application
                   android:allowBackup="true"
                   android:icon="@drawable/ic_launcher_haram"
@@ -146,7 +145,6 @@ jobs:
           import android.media.*
           import android.net.Uri
           import android.os.*
-          import android.telephony.TelephonyManager
           import android.view.Gravity
           import android.widget.*
           import java.util.Calendar
@@ -213,14 +211,14 @@ jobs:
 
                   val btnFileHour = Button(this).apply {
                       val hasCustom = p.getString("uri_hour", null) != null
-                      text = if (hasCustom) "صدای زنگ: فایل انتخابی فعال است (کلیک برای تغییر)" else "صدای زنگ: آهنگ saat پیش‌فرض (کلیک برای انتخاب فایل)"
+                      text = if (hasCustom) "صدای زنگ: فایل انتخابی فعال است (کلیک برای تغییر)" else "صدای زنگ: آهنگ saat پیش‌فرض (کلیک برای تغییر)"
                       setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#38BDF8"))
                       setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ_HOUR) }
                   }
 
                   val btnFileSalawat = Button(this).apply {
                       val hasCustom = p.getString("uri_salawat", null) != null
-                      text = if (hasCustom) "صدای ساعت ۸ و ۲۰: فایل انتخابی فعال است" else "صدای ساعت ۸ و ۲۰: آهنگ salavat پیش‌فرض"
+                      text = if (hasCustom) "صدای ساعت ۸ و ۲۰: فایل انتخابی فعال است" else "صدای ساعت ۸ و ۲۰: آهنگ salavat پیش‌‌فرض"
                       setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#34D399"))
                       setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ_SALAWAT) }
                   }
@@ -305,8 +303,7 @@ jobs:
                   val wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "HaramClock:ChimeLock")
                   wl.acquire(60000L)
                   try {
-                      val tm = c.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-                      if (tm == null || tm.callState == TelephonyManager.CALL_STATE_IDLE) {
+                      if (!isCallActive(c)) {
                           val cal = Calendar.getInstance()
                           val h = cal.get(Calendar.HOUR_OF_DAY)
                           val m = cal.get(Calendar.MINUTE)
@@ -334,6 +331,13 @@ jobs:
                   private var currentMp: MediaPlayer? = null
                   private var currentTrack: AudioTrack? = null
 
+                  private fun isCallActive(c: Context): Boolean {
+                      val am = c.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
+                      return am.mode == AudioManager.MODE_IN_CALL ||
+                             am.mode == AudioManager.MODE_IN_COMMUNICATION ||
+                             am.mode == AudioManager.MODE_RINGTONE
+                  }
+
                   fun stop() {
                       isPlaying = false
                       try {
@@ -356,53 +360,17 @@ jobs:
 
                   fun playSalawat(c: Context) {
                       stop()
+                      if (isCallActive(c)) return
                       isPlaying = true
                       val p = c.getSharedPreferences("P", 0)
                       val u = p.getString("uri_salawat", null)
-                      thread {
-                          try {
-                              val mp = if (u != null) {
-                                  MediaPlayer.create(c, Uri.parse(u))
-                              } else {
-                                  val id = c.resources.getIdentifier("salawat", "raw", c.packageName)
-                                  if (id != 0) MediaPlayer.create(c, id) else null
-                              }
-
-                              if (mp != null) {
-                                  currentMp = mp
-                                  mp.start()
-                                  while (mp.isPlaying && isPlaying) Thread.sleep(150)
-                                  mp.release()
-                                  currentMp = null
-                              } else {
-                                  for (k in 0 until 8) {
-                                      if (!isPlaying) break
-                                      sndTone(659.25, 450L)
-                                  }
-                              }
-                          } catch (_: Exception) {}
-                          finally { isPlaying = false }
-                      }
-                  }
-
-                  fun play(c: Context, r: Int, onFinish: (() -> Unit)? = null) {
-                      stop()
-                      isPlaying = true
-                      val tm = c.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
-                      if (tm != null && tm.callState != TelephonyManager.CALL_STATE_IDLE) {
-                          isPlaying = false; onFinish?.invoke(); return
-                      }
-
-                      val p = c.getSharedPreferences("P", 0)
-                      val u = p.getString("uri_hour", null)
                       val g = p.getLong("gap", 1000L)
                       val rawSaatId = c.resources.getIdentifier("saat", "raw", c.packageName)
 
                       thread {
                           try {
                               for (idx in 0 until r) {
-                                  if (!isPlaying) break
-                                  if (tm != null && tm.callState != TelephonyManager.CALL_STATE_IDLE) break
+                                  if (!isPlaying || isCallActive(c)) break
 
                                   var played = false
                                   try {
@@ -418,6 +386,7 @@ jobs:
                                           val dur = mp.duration.toLong()
                                           var waited = 0L
                                           while (waited < dur + g && isPlaying) {
+                                              if (isCallActive(c)) break
                                               Thread.sleep(100)
                                               waited += 100
                                           }
@@ -427,7 +396,7 @@ jobs:
                                       }
                                   } catch (_: Exception) {}
 
-                                  if (!played) {
+                                  if (!played && isPlaying && !isCallActive(c)) {
                                       sndTone(587.33, g)
                                   }
                               }
@@ -497,5 +466,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HaramClock-v2.5-APK
+          name: HaramClock-v3.0-APK
           path: app/build/outputs/apk/debug/*.apk
