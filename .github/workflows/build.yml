@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -24,15 +24,29 @@ jobs:
         with:
           gradle-version: '8.2'
 
-      - name: Create Files
+      - name: Prepare Audio and Project
         run: |
           mkdir -p app/src/main/java/com/example/hourlychime
           mkdir -p app/src/main/res/drawable
           mkdir -p app/src/main/res/raw
 
-          # کپی هوشمند فایل های صوتی بدون توجه به حروف بزرگ یا کوچک
-          find . -maxdepth 1 -iname "*saat*" -o -iname "*hour*" | head -n 1 | xargs -I {} cp "{}" app/src/main/res/raw/saat.mp3 2>/dev/null || true
-          find . -maxdepth 1 -iname "*salavat*" -o -iname "*salavst*" | head -n 1 | xargs -I {} cp "{}" app/src/main/res/raw/salavat.mp3 2>/dev/null || true
+          echo "=== لیست تمام فایل‌های موجود در مخزن ==="
+          ls -la
+
+          # کپی هوشمند فایل saat (با هر پسوند یا بدون پسوند و بدون حساسیت به حروف کوچک/بزرگ)
+          find . -maxdepth 2 -type f -iname "*saat*" ! -path "*/app/src/*" | head -n 1 | while read -r f; do
+            echo "فایل زنگ ساعت شناسایی شد: $f"
+            cp "$f" app/src/main/res/raw/saat.mp3
+          done
+
+          # کپی هوشمند فایل Salavat (با هر پسوند یا بدون پسوند و تبدیل به حروف کوچک استاندارد اندروید)
+          find . -maxdepth 2 -type f -iname "*salavat*" ! -path "*/app/src/*" | head -n 1 | while read -r f; do
+            echo "فایل صلوات خاصه شناسایی شد: $f"
+            cp "$f" app/src/main/res/raw/salavat.mp3
+          done
+
+          echo "=== فایل‌های منتقل شده به پوشه برنامه (res/raw) ==="
+          ls -la app/src/main/res/raw/
 
           echo 'rootProject.name = "HourlyChimeApp"' > settings.gradle
           echo 'include ":app"' >> settings.gradle
@@ -60,8 +74,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 20
-                  versionName "3.1"
+                  versionCode 22
+                  versionName "3.3"
               }
               buildTypes { release { minifyEnabled false } }
               compileOptions {
@@ -154,6 +168,7 @@ jobs:
               private val REQ_HOUR = 101
               private val REQ_SALAWAT = 102
               private var btnTestRef: Button? = null
+              private var btnStopAllRef: Button? = null
 
               override fun onCreate(b: Bundle?) {
                   super.onCreate(b)
@@ -210,16 +225,29 @@ jobs:
 
                   val btnFileHour = Button(this).apply {
                       val hasCustom = p.getString("uri_hour", null) != null
-                      text = if (hasCustom) "صدای زنگ: فایل دلخواه تنظیم است (کلیک برای تغییر)" else "صدای زنگ: فایل صوتی پیش‌فرض saat (کلیک برای تغییر)"
+                      text = if (hasCustom) "صدای زنگ: فایل انتخابی فعال است (تغییر)" else "صدای زنگ: فایل saat پیش‌فرض (تغییر)"
                       setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#38BDF8"))
                       setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ_HOUR) }
                   }
 
                   val btnFileSalawat = Button(this).apply {
                       val hasCustom = p.getString("uri_salawat", null) != null
-                      text = if (hasCustom) "صدای ساعت ۸ و ۲۰: فایل دلخواه فعال است" else "صدای ساعت ۸ و ۲۰: صلوات خاصه پیش‌فرض (کلیک برای تغییر)"
+                      text = if (hasCustom) "صدای ساعت ۸ و ۲۰: فایل انتخابی فعال است" else "صدای ساعت ۸ و ۲۰: نوای Salavat پیش‌فرض (تغییر)"
                       setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#34D399"))
                       setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ_SALAWAT) }
+                  }
+
+                  val btnStopAll = Button(this).apply {
+                      btnStopAllRef = this
+                      text = "⛔ توقف کامل پخش صدا"
+                      setBackgroundColor(Color.parseColor("#991B1B"))
+                      setTextColor(Color.WHITE)
+                      visibility = android.view.View.GONE
+                      setOnClickListener {
+                          HourlyReceiver.stop()
+                          resetTestButtons()
+                          Toast.makeText(this@MainActivity, "پخش صدا متوقف شد", Toast.LENGTH_SHORT).show()
+                      }
                   }
 
                   val btnT = Button(this).apply {
@@ -230,14 +258,15 @@ jobs:
                       setOnClickListener {
                           if (HourlyReceiver.isPlaying) {
                               HourlyReceiver.stop()
-                              text = "تست صدای ساعت جاری"
-                              setBackgroundColor(Color.parseColor("#334155"))
+                              resetTestButtons()
                           } else {
+                              HourlyReceiver.stop()
                               val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY) % 12
-                              text = "توقف تست"
-                              setBackgroundColor(Color.parseColor("#B91C1C"))
+                              text = "توقف تست ساعت"
+                              setBackgroundColor(Color.parseColor("#DC2626"))
+                              btnStopAllRef?.visibility = android.view.View.VISIBLE
                               HourlyReceiver.play(this@MainActivity, if (h == 0) 12 else h) {
-                                  runOnUiThread { text = "تست صدای ساعت جاری"; setBackgroundColor(Color.parseColor("#334155")) }
+                                  runOnUiThread { resetTestButtons() }
                               }
                           }
                       }
@@ -248,10 +277,16 @@ jobs:
                       setBackgroundColor(Color.parseColor("#334155"))
                       setTextColor(Color.parseColor("#FDE047"))
                       setOnClickListener {
-                          HourlyReceiver.stop()
-                          btnTestRef?.text = "تست صدای ساعت جاری"
-                          btnTestRef?.setBackgroundColor(Color.parseColor("#334155"))
-                          HourlyReceiver.play(this@MainActivity, 1) {}
+                          if (HourlyReceiver.isPlaying) {
+                              HourlyReceiver.stop()
+                              resetTestButtons()
+                          } else {
+                              HourlyReceiver.stop()
+                              btnStopAllRef?.visibility = android.view.View.VISIBLE
+                              HourlyReceiver.play(this@MainActivity, 1) {
+                                  runOnUiThread { resetTestButtons() }
+                              }
+                          }
                       }
                   }
 
@@ -260,24 +295,35 @@ jobs:
                       setBackgroundColor(Color.parseColor("#065F46"))
                       setTextColor(Color.parseColor("#34D399"))
                       setOnClickListener {
-                          HourlyReceiver.stop()
-                          btnTestRef?.text = "تست صدای ساعت جاری"
-                          btnTestRef?.setBackgroundColor(Color.parseColor("#334155"))
-                          HourlyReceiver.playSalawat(this@MainActivity)
+                          if (HourlyReceiver.isPlaying) {
+                              HourlyReceiver.stop()
+                              resetTestButtons()
+                          } else {
+                              HourlyReceiver.stop()
+                              btnStopAllRef?.visibility = android.view.View.VISIBLE
+                              HourlyReceiver.playSalawat(this@MainActivity) {
+                                  runOnUiThread { resetTestButtons() }
+                              }
+                          }
                       }
                   }
 
                   ll.addView(t); ll.addView(st); ll.addView(btnToggle); ll.addView(chSalawat); ll.addView(chHalf); ll.addView(cq)
                   ll.addView(spGap); ll.addView(btnFileHour); ll.addView(btnFileSalawat)
-                  ll.addView(btnT); ll.addView(btnTH); ll.addView(btnTSalawat)
+                  ll.addView(btnStopAll); ll.addView(btnT); ll.addView(btnTH); ll.addView(btnTSalawat)
                   sv.addView(ll); setContentView(sv)
+              }
+
+              private fun resetTestButtons() {
+                  btnTestRef?.text = "تست صدای ساعت جاری"
+                  btnTestRef?.setBackgroundColor(Color.parseColor("#334155"))
+                  btnStopAllRef?.visibility = android.view.View.GONE
               }
 
               override fun onPause() {
                   super.onPause()
                   HourlyReceiver.stop()
-                  btnTestRef?.text = "تست صدای ساعت جاری"
-                  btnTestRef?.setBackgroundColor(Color.parseColor("#334155"))
+                  resetTestButtons()
               }
 
               override fun onActivityResult(req: Int, res: Int, d: Intent?) {
@@ -309,7 +355,7 @@ jobs:
                           val p = c.getSharedPreferences("P", 0)
 
                           if (m in 0..4 && (h == 8 || h == 20) && p.getBoolean("salawat_8", true)) {
-                              playSalawat(c)
+                              playSalawat(c) {}
                           } else if (!(p.getBoolean("q", true) && (h >= 23 || h < 7))) {
                               if (m in 25..35) {
                                   if (p.getBoolean("half", true)) play(c, 1) {}
@@ -336,13 +382,19 @@ jobs:
 
                   fun stop() {
                       isPlaying = false
-                      try { mp?.stop(); mp?.release() } catch (_: Exception) {}
+                      try {
+                          mp?.let {
+                              if (it.isPlaying) it.stop()
+                              it.reset()
+                              it.release()
+                          }
+                      } catch (_: Exception) {}
                       mp = null
                   }
 
-                  fun playSalawat(c: Context) {
+                  fun playSalawat(c: Context, onFinish: (() -> Unit)? = null) {
                       stop()
-                      if (isCall(c)) return
+                      if (isCall(c)) { onFinish?.invoke(); return }
                       isPlaying = true
                       val p = c.getSharedPreferences("P", 0)
                       val u = p.getString("uri_salawat", null)
@@ -351,9 +403,10 @@ jobs:
                               val player = if (u != null) {
                                   MediaPlayer.create(c, Uri.parse(u))
                               } else {
-                                  val id = c.resources.getIdentifier("salawat", "raw", c.packageName)
+                                  val id = c.resources.getIdentifier("salavat", "raw", c.packageName)
                                   if (id != 0) MediaPlayer.create(c, id) else null
                               }
+
                               if (player != null) {
                                   mp = player
                                   player.start()
@@ -362,7 +415,10 @@ jobs:
                                   mp = null
                               }
                           } catch (_: Exception) {}
-                          finally { isPlaying = false }
+                          finally {
+                              isPlaying = false
+                              onFinish?.invoke()
+                          }
                       }
                   }
 
@@ -448,5 +504,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HaramClock-v3.1-APK
+          name: HaramClock-v3.3-FixedAudio-APK
           path: app/build/outputs/apk/debug/*.apk
