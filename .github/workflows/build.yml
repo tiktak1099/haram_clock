@@ -30,8 +30,8 @@ jobs:
           mkdir -p app/src/main/res/drawable
           mkdir -p app/src/main/res/raw
 
-          cp saat.mp3 app/src/main/res/raw/saat.mp3
-          cp salavat.mp3 app/src/main/res/raw/salavat.mp3
+          cp saat.mp3 app/src/main/res/raw/saat.mp3 2>/dev/null || true
+          cp salavat.mp3 app/src/main/res/raw/salavat.mp3 2>/dev/null || true
 
           echo 'rootProject.name = "HourlyChimeApp"' > settings.gradle
           echo 'include ":app"' >> settings.gradle
@@ -59,8 +59,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 24
-                  versionName "4.0"
+                  versionCode 25
+                  versionName "4.1"
               }
               buildTypes { release { minifyEnabled false } }
               compileOptions {
@@ -100,12 +100,12 @@ jobs:
           <vector xmlns:android="http://schemas.android.com/apk/res/android"
               android:width="360dp" android:height="640dp"
               android:viewportWidth="360" android:viewportHeight="640">
-              <path android:pathData="M0,0h360v640h-360z" android:fillColor="#081528" />
-              <path android:pathData="M180,260m-130,0a130,130 0,1,1 260,0a130,130 0,1,1 -260,0" android:fillColor="#10253F" />
-              <path android:pathData="M110,220 C110,90 145,70 180,70 C215,70 250,90 250,220 Z" android:fillColor="#173859" />
-              <path android:pathData="M120,220 L240,220 L225,500 L135,500 Z" android:fillColor="#0E233A" />
-              <path android:pathData="M180,360m-45,0a45,45 0,1,1 90,0a45,45 0,1,1 -90,0" android:fillColor="#1F2F26" />
-              <path android:pathData="M0,0h360v640h-360z" android:fillColor="#B009182B" />
+              <path android:pathData="M0,0h360v640h-360z" android:fillColor="#040D1A" />
+              <path android:pathData="M180,260m-130,0a130,130 0,1,1 260,0a130,130 0,1,1 -260,0" android:fillColor="#0B1E38" />
+              <path android:pathData="M110,220 C110,90 145,70 180,70 C215,70 250,90 250,220 Z" android:fillColor="#102C4E" />
+              <path android:pathData="M120,220 L240,220 L225,500 L135,500 Z" android:fillColor="#091A30" />
+              <path android:pathData="M180,360m-45,0a45,45 0,1,1 90,0a45,45 0,1,1 -90,0" android:fillColor="#1C271E" />
+              <path android:pathData="M0,0h360v640h-360z" android:fillColor="#BD051020" />
           </vector>
           EOF
 
@@ -140,11 +140,14 @@ jobs:
           package com.example.hourlychime
           import android.app.*
           import android.content.*
+          import android.content.res.ColorStateList
           import android.graphics.*
+          import android.graphics.drawable.GradientDrawable
           import android.media.*
           import android.net.Uri
           import android.os.*
           import android.view.Gravity
+          import android.view.View
           import android.widget.*
           import java.util.Calendar
           import kotlin.concurrent.thread
@@ -155,90 +158,208 @@ jobs:
               private var btnTestRef: Button? = null
               private var btnStopAllRef: Button? = null
 
+              private fun createCard(borderColor: Int = Color.parseColor("#1E3A5F")): LinearLayout {
+                  return LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(35, 30, 35, 30)
+                      val gd = GradientDrawable().apply {
+                          setColor(Color.parseColor("#800A192F")) // شیشه‌ای مات تیره
+                          cornerRadius = 32f
+                          setStroke(2, borderColor)
+                      }
+                      background = gd
+                      val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                      lp.setMargins(0, 0, 0, 28)
+                      layoutParams = lp
+                  }
+              }
+
+              private fun makeSwitch(title: String, initial: Boolean, activeColorHex: String): Switch {
+                  val activeColor = Color.parseColor(activeColorHex)
+                  val inactiveColor = Color.parseColor("#64748B")
+                  val thumbStates = ColorStateList(
+                      arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+                      intArrayOf(activeColor, Color.parseColor("#94A3B8"))
+                  )
+                  val trackStates = ColorStateList(
+                      arrayOf(intArrayOf(android.R.attr.state_checked), intArrayOf()),
+                      intArrayOf(Color.parseColor(activeColorHex).let { Color.argb(120, Color.red(it), Color.green(it), Color.blue(it)) }, Color.parseColor("#334155"))
+                  )
+
+                  return Switch(this).apply {
+                      text = title
+                      textSize = 15f
+                      setTextColor(Color.WHITE)
+                      isChecked = initial
+                      thumbTintList = thumbStates
+                      trackTintList = trackStates
+                      setPadding(0, 15, 0, 15)
+                  }
+              }
+
               override fun onCreate(b: Bundle?) {
                   super.onCreate(b)
                   val p = getSharedPreferences("P", 0)
+
                   val sv = ScrollView(this).apply {
                       setBackgroundResource(resources.getIdentifier("bg_blurred_haram", "drawable", packageName))
                       isFillViewport = true
                   }
-                  val ll = LinearLayout(this).apply { orientation = 1; gravity = Gravity.CENTER_HORIZONTAL; setPadding(30, 40, 30, 40) }
-                  val t = TextView(this).apply { text = "ساعت حرم امام رضا (ع)"; textSize = 22f; setTextColor(Color.parseColor("#38BDF8")); typeface = Typeface.DEFAULT_BOLD; gravity = 1 }
-                  val st = TextView(this).apply {
-                      text = if (p.getBoolean("on", false)) "وضعیت: برنامه فعال است" else "وضعیت: غیرفعال"
-                      textSize = 14f; setTextColor(if (p.getBoolean("on", false)) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8")); gravity = 1; setPadding(0, 10, 0, 20)
+
+                  val mainLayout = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      setPadding(35, 45, 35, 45)
                   }
 
+                  // هدر بالا
+                  val headerBox = LinearLayout(this).apply {
+                      orientation = LinearLayout.VERTICAL
+                      gravity = Gravity.CENTER
+                      setPadding(0, 10, 0, 30)
+                  }
+                  val title = TextView(this).apply {
+                      text = "ساعت حرم امام رضا (ع)"
+                      textSize = 23f
+                      setTextColor(Color.parseColor("#F59E0B"))
+                      typeface = Typeface.DEFAULT_BOLD
+                      gravity = Gravity.CENTER
+                  }
+                  val subTitle = TextView(this).apply {
+                      text = "السلام علیک یا علی بن موسی الرضا"
+                      textSize = 13f
+                      setTextColor(Color.parseColor("#7DD3FC"))
+                      gravity = Gravity.CENTER
+                      setPadding(0, 6, 0, 0)
+                  }
+                  headerBox.addView(title); headerBox.addView(subTitle)
+                  mainLayout.addView(headerBox)
+
+                  // کارت ۱: وضعیت کلی سامانه
+                  val card1 = createCard(Color.parseColor("#F59E0B"))
+                  val st = TextView(this).apply {
+                      val on = p.getBoolean("on", false)
+                      text = if (on) "● وضعیت برنامه: فعال و در حال خدمت" else "○ وضعیت برنامه: غیرفعال"
+                      textSize = 14f
+                      setTextColor(if (on) Color.parseColor("#34D399") else Color.parseColor("#94A3B8"))
+                      typeface = Typeface.DEFAULT_BOLD
+                      setPadding(0, 0, 0, 15)
+                  }
                   val btnToggle = Button(this).apply {
                       val on = p.getBoolean("on", false)
-                      text = if (on) "خاموش کردن کلی برنامه" else "روشن کردن کلی برنامه"
-                      setBackgroundColor(if (on) Color.parseColor("#DC2626") else Color.parseColor("#0284C7"))
+                      text = if (on) "خاموش کردن سرویس زنگ" else "روشن کردن سامانه ساعت حرم"
+                      val bg = GradientDrawable().apply {
+                          setColor(if (on) Color.parseColor("#DC2626") else Color.parseColor("#0284C7"))
+                          cornerRadius = 24f
+                      }
+                      background = bg
                       setTextColor(Color.WHITE)
+                      textSize = 15f
                       setOnClickListener {
                           val n = !p.getBoolean("on", false)
                           p.edit().putBoolean("on", n).apply()
                           if (n) {
                               HourlyReceiver.sch(this@MainActivity)
-                              text = "خاموش کردن کلی برنامه"; setBackgroundColor(Color.parseColor("#DC2626"))
-                              st.text = "وضعیت: برنامه فعال است"; st.setTextColor(Color.parseColor("#4ADE80"))
+                              text = "خاموش کردن سرویس زنگ"
+                              (background as GradientDrawable).setColor(Color.parseColor("#DC2626"))
+                              st.text = "● وضعیت برنامه: فعال و در حال خدمت"
+                              st.setTextColor(Color.parseColor("#34D399"))
                           } else {
                               HourlyReceiver.can(this@MainActivity)
-                              text = "روشن کردن کلی برنامه"; setBackgroundColor(Color.parseColor("#0284C7"))
-                              st.text = "وضعیت: غیرفعال"; st.setTextColor(Color.parseColor("#94A3B8"))
+                              text = "روشن کردن سامانه ساعت حرم"
+                              (background as GradientDrawable).setColor(Color.parseColor("#0284C7"))
+                              st.text = "○ وضعیت برنامه: غیرفعال"
+                              st.setTextColor(Color.parseColor("#94A3B8"))
                           }
                       }
                   }
+                  card1.addView(st); card1.addView(btnToggle)
+                  mainLayout.addView(card1)
 
-                  // ۱. پخش صلوات خاصه در ساعت ۸ و ۲۰ (همراه تک‌زنگ آغازین)
-                  val chSalawat = CheckBox(this).apply {
-                      text = "پخش صلوات خاصه در ۸ و ۲۰ (تک‌زنگ + صلوات)"
+                  // کارت ۲: ساعت امام رضا (ع) - ۰۸:۰۰ و ۲۰:۰۰
+                  val card2 = createCard(Color.parseColor("#10B981"))
+                  val labelCard2 = TextView(this).apply {
+                      text = "🕊️ نوای ساعت امام هشتم (ع)"
+                      textSize = 16f
                       setTextColor(Color.parseColor("#34D399"))
-                      isChecked = p.getBoolean("salawat_8", true)
-                      setOnCheckedChangeListener { _, c -> p.edit().putBoolean("salawat_8", c).apply() }
+                      typeface = Typeface.DEFAULT_BOLD
+                      setPadding(0, 0, 0, 10)
                   }
+                  val swSalawat = makeSwitch("پخش در ساعت ۸ و ۲۰ (تک‌زنگ + صلوات خاصه)", p.getBoolean("salawat_8", true), "#34D399")
+                  swSalawat.setOnCheckedChangeListener { _, c -> p.edit().putBoolean("salawat_8", c).apply() }
+                  card2.addView(labelCard2); card2.addView(swSalawat)
+                  mainLayout.addView(card2)
 
-                  // ۲. امکان فعال یا غیرفعال کردن کل زنگ‌های سر ساعت
-                  val chHourEnable = CheckBox(this).apply {
-                      text = "زنگ سر هر ساعت فعال باشد"
+                  // کارت ۳: زمان‌بندی زنگ‌های ساعت
+                  val card3 = createCard(Color.parseColor("#0284C7"))
+                  val labelCard3 = TextView(this).apply {
+                      text = "⏱️ زمان‌بندی و نواختن زنگ‌ها"
+                      textSize = 16f
                       setTextColor(Color.parseColor("#38BDF8"))
-                      isChecked = p.getBoolean("hour_enable", true)
-                      setOnCheckedChangeListener { _, c -> p.edit().putBoolean("hour_enable", c).apply() }
+                      typeface = Typeface.DEFAULT_BOLD
+                      setPadding(0, 0, 0, 10)
                   }
 
-                  // ۳. شیوه زنگ زدن سر هر ساعت (تک زنگ یا به تعداد ساعت)
+                  val swHourEnable = makeSwitch("زنگ‌های سر هر ساعت فعال باشد", p.getBoolean("hour_enable", true), "#38BDF8")
+                  swHourEnable.setOnCheckedChangeListener { _, c -> p.edit().putBoolean("hour_enable", c).apply() }
+
                   val modeLabel = TextView(this).apply {
-                      text = "نحوه نواختن زنگ سر ساعت:"; setTextColor(Color.parseColor("#BAE6FD")); setPadding(0, 10, 0, 5)
+                      text = "نحوه زنگ زدن سر هر ساعت:"; setTextColor(Color.parseColor("#BAE6FD")); setPadding(0, 12, 0, 6); textSize = 13f
                   }
                   val spHourMode = Spinner(this).apply {
                       adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("به تعداد ساعت (مثلاً ساعت ۵، ۵ ضربه)", "فقط یک تک‌زنگ سر ساعت"))
                       setSelection(if (p.getBoolean("single_hourly_chime", false)) 1 else 0)
                       onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                          override fun onItemSelected(p0: AdapterView<*>?, v: android.view.View?, pos: Int, id: Long) {
+                          override fun onItemSelected(p0: AdapterView<*>?, v: View?, pos: Int, id: Long) {
                               p.edit().putBoolean("single_hourly_chime", pos == 1).apply()
                           }
                           override fun onNothingSelected(p0: AdapterView<*>?) {}
                       }
                   }
 
-                  val chHalf = CheckBox(this).apply { text = "تک‌زنگ در دقیقه ۳۰ (نیم‌ساعت)"; setTextColor(Color.parseColor("#FDE047")); isChecked = p.getBoolean("half", true); setOnCheckedChangeListener { _, c -> p.edit().putBoolean("half", c).apply() } }
-                  val cq = CheckBox(this).apply { text = "بی‌صدا در شب (۲۳:۰۰ الی ۰۷:۰۰)"; setTextColor(Color.parseColor("#E2E8F0")); isChecked = p.getBoolean("q", true); setOnCheckedChangeListener { _, c -> p.edit().putBoolean("q", c).apply() } }
+                  val swHalf = makeSwitch("تک‌زنگ در دقیقه ۳۰ (نیم‌ساعت)", p.getBoolean("half", true), "#FDE047")
+                  swHalf.setOnCheckedChangeListener { _, c -> p.edit().putBoolean("half", c).apply() }
 
+                  val swQuiet = makeSwitch("حالت بی‌صدا در شب (۲۳:۰۰ الی ۰۷:۰۰)", p.getBoolean("q", true), "#A78BFA")
+                  swQuiet.setOnCheckedChangeListener { _, c -> p.edit().putBoolean("q", c).apply() }
+
+                  val gapLabel = TextView(this).apply {
+                      text = "فاصله بین ضربات زنگ:"; setTextColor(Color.parseColor("#BAE6FD")); setPadding(0, 12, 0, 6); textSize = 13f
+                  }
                   val vals = longArrayOf(0L, 500L, 1000L, 1500L, 2000L)
                   val spGap = Spinner(this).apply {
-                      adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("فاصله ضربات: ۰ ثانیه", "فاصله ضربات: ۰.۵ ثانیه", "فاصله ضربات: ۱ ثانیه", "فاصله ضربات: ۱.۵ ثانیه", "فاصله ضربات: ۲ ثانیه"))
+                      adapter = ArrayAdapter(this@MainActivity, android.R.layout.simple_spinner_dropdown_item, arrayOf("بدون فاصله (۰ ثانیه)", "فاصله ۰.۵ ثانیه", "فاصله ۱ ثانیه", "فاصله ۱.۵ ثانیه", "فاصله ۲ ثانیه"))
                       var idx = 2; val cur = p.getLong("gap", 1000L)
                       for (i in vals.indices) if (vals[i] == cur) idx = i
                       setSelection(idx)
                       onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-                          override fun onItemSelected(p0: AdapterView<*>?, v: android.view.View?, pos: Int, id: Long) { p.edit().putLong("gap", vals[pos]).apply() }
+                          override fun onItemSelected(p0: AdapterView<*>?, v: View?, pos: Int, id: Long) { p.edit().putLong("gap", vals[pos]).apply() }
                           override fun onNothingSelected(p0: AdapterView<*>?) {}
                       }
                   }
 
+                  card3.addView(labelCard3); card3.addView(swHourEnable)
+                  card3.addView(modeLabel); card3.addView(spHourMode)
+                  card3.addView(swHalf); card3.addView(swQuiet)
+                  card3.addView(gapLabel); card3.addView(spGap)
+                  mainLayout.addView(card3)
+
+                  // کارت ۴: مدیریت فایل‌های صوتی
+                  val card4 = createCard(Color.parseColor("#334155"))
+                  val labelCard4 = TextView(this).apply {
+                      text = "🎵 فایل‌های صوتی فعال"
+                      textSize = 16f
+                      setTextColor(Color.parseColor("#E2E8F0"))
+                      typeface = Typeface.DEFAULT_BOLD
+                      setPadding(0, 0, 0, 10)
+                  }
+
                   val btnFileHour = Button(this).apply {
                       val hasCustom = p.getString("uri_hour", null) != null
-                      text = if (hasCustom) "صدای زنگ: فایل انتخابی فعال است (تغییر)" else "صدای زنگ: فایل saat داخلی (تغییر)"
-                      setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#38BDF8"))
+                      text = if (hasCustom) "صدای ساعت: فایل شخصی گوشی (کلیک برای بازگشت)" else "صدای ساعت: فایل saat پیش‌فرض داخلی"
+                      val gd = GradientDrawable().apply { setColor(Color.parseColor("#1E293B")); cornerRadius = 20f; setStroke(1, Color.parseColor("#38BDF8")) }
+                      background = gd
+                      setTextColor(Color.parseColor("#38BDF8"))
+                      textSize = 13f
                       setOnClickListener {
                           if (hasCustom) {
                               p.edit().remove("uri_hour").apply()
@@ -252,8 +373,14 @@ jobs:
 
                   val btnFileSalawat = Button(this).apply {
                       val hasCustom = p.getString("uri_salawat", null) != null
-                      text = if (hasCustom) "صدای صلوات: فایل انتخابی فعال است" else "صدای صلوات: فایل salavat داخلی (تغییر)"
-                      setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#34D399"))
+                      text = if (hasCustom) "صلوات ۸ و ۲۰: فایل شخصی گوشی (کلیک برای بازگشت)" else "صلوات ۸ و ۲۰: نوای salavat پیش‌فرض داخلی"
+                      val gd = GradientDrawable().apply { setColor(Color.parseColor("#1E293B")); cornerRadius = 20f; setStroke(1, Color.parseColor("#34D399")) }
+                      background = gd
+                      setTextColor(Color.parseColor("#34D399"))
+                      textSize = 13f
+                      val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                      lp.setMargins(0, 14, 0, 0)
+                      layoutParams = lp
                       setOnClickListener {
                           if (hasCustom) {
                               p.edit().remove("uri_salawat").apply()
@@ -264,24 +391,39 @@ jobs:
                           }
                       }
                   }
+                  card4.addView(labelCard4); card4.addView(btnFileHour); card4.addView(btnFileSalawat)
+                  mainLayout.addView(card4)
 
+                  // دکمه سراسری توقف کامل
                   val btnStopAll = Button(this).apply {
                       btnStopAllRef = this
                       text = "⛔ توقف کامل پخش صدا"
-                      setBackgroundColor(Color.parseColor("#991B1B"))
+                      val gd = GradientDrawable().apply { setColor(Color.parseColor("#B91C1C")); cornerRadius = 24f }
+                      background = gd
                       setTextColor(Color.WHITE)
-                      visibility = android.view.View.GONE
+                      textSize = 15f
+                      typeface = Typeface.DEFAULT_BOLD
+                      visibility = View.GONE
+                      val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                      lp.setMargins(0, 0, 0, 16)
+                      layoutParams = lp
                       setOnClickListener {
                           HourlyReceiver.stop()
                           resetTestButtons()
                       }
                   }
+                  mainLayout.addView(btnStopAll)
 
+                  // دکمه‌های تست
                   val btnT = Button(this).apply {
                       btnTestRef = this
                       text = "تست صدای ساعت جاری"
-                      setBackgroundColor(Color.parseColor("#334155"))
+                      val gd = GradientDrawable().apply { setColor(Color.parseColor("#1E293B")); cornerRadius = 22f; setStroke(2, Color.parseColor("#64748B")) }
+                      background = gd
                       setTextColor(Color.WHITE)
+                      val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                      lp.setMargins(0, 0, 0, 12)
+                      layoutParams = lp
                       setOnClickListener {
                           if (HourlyReceiver.isPlaying) {
                               HourlyReceiver.stop()
@@ -290,9 +432,9 @@ jobs:
                               HourlyReceiver.stop()
                               val h = Calendar.getInstance().get(Calendar.HOUR_OF_DAY) % 12
                               val count = if (p.getBoolean("single_hourly_chime", false)) 1 else (if (h == 0) 12 else h)
-                              text = "توقف تست ساعت"
-                              setBackgroundColor(Color.parseColor("#DC2626"))
-                              btnStopAllRef?.visibility = android.view.View.VISIBLE
+                              text = "توقف تست ساعت جاری"
+                              (background as GradientDrawable).setColor(Color.parseColor("#DC2626"))
+                              btnStopAllRef?.visibility = View.VISIBLE
                               HourlyReceiver.play(this@MainActivity, count) {
                                   runOnUiThread { resetTestButtons() }
                               }
@@ -301,16 +443,20 @@ jobs:
                   }
 
                   val btnTH = Button(this).apply {
-                      text = "تست تک‌‌زنگ نیم‌ساعت"
-                      setBackgroundColor(Color.parseColor("#334155"))
+                      text = "تست تک‌زنگ نیم‌ساعت"
+                      val gd = GradientDrawable().apply { setColor(Color.parseColor("#1E293B")); cornerRadius = 22f; setStroke(2, Color.parseColor("#CA8A04")) }
+                      background = gd
                       setTextColor(Color.parseColor("#FDE047"))
+                      val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                      lp.setMargins(0, 0, 0, 12)
+                      layoutParams = lp
                       setOnClickListener {
                           if (HourlyReceiver.isPlaying) {
                               HourlyReceiver.stop()
                               resetTestButtons()
                           } else {
                               HourlyReceiver.stop()
-                              btnStopAllRef?.visibility = android.view.View.VISIBLE
+                              btnStopAllRef?.visibility = View.VISIBLE
                               HourlyReceiver.play(this@MainActivity, 1) {
                                   runOnUiThread { resetTestButtons() }
                               }
@@ -320,15 +466,19 @@ jobs:
 
                   val btnTSalawat = Button(this).apply {
                       text = "تست نوای ساعت ۸ و ۲۰ (تک‌زنگ + صلوات)"
-                      setBackgroundColor(Color.parseColor("#065F46"))
+                      val gd = GradientDrawable().apply { setColor(Color.parseColor("#064E3B")); cornerRadius = 22f; setStroke(2, Color.parseColor("#059669")) }
+                      background = gd
                       setTextColor(Color.parseColor("#34D399"))
+                      val lp = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
+                      lp.setMargins(0, 0, 0, 20)
+                      layoutParams = lp
                       setOnClickListener {
                           if (HourlyReceiver.isPlaying) {
                               HourlyReceiver.stop()
                               resetTestButtons()
                           } else {
                               HourlyReceiver.stop()
-                              btnStopAllRef?.visibility = android.view.View.VISIBLE
+                              btnStopAllRef?.visibility = View.VISIBLE
                               HourlyReceiver.playSalawatSpecial(this@MainActivity) {
                                   runOnUiThread { resetTestButtons() }
                               }
@@ -336,18 +486,14 @@ jobs:
                       }
                   }
 
-                  ll.addView(t); ll.addView(st); ll.addView(btnToggle)
-                  ll.addView(chSalawat); ll.addView(chHourEnable); ll.addView(modeLabel); ll.addView(spHourMode)
-                  ll.addView(chHalf); ll.addView(cq); ll.addView(spGap)
-                  ll.addView(btnFileHour); ll.addView(btnFileSalawat)
-                  ll.addView(btnStopAll); ll.addView(btnT); ll.addView(btnTH); ll.addView(btnTSalawat)
-                  sv.addView(ll); setContentView(sv)
+                  mainLayout.addView(btnT); mainLayout.addView(btnTH); mainLayout.addView(btnTSalawat)
+                  sv.addView(mainLayout); setContentView(sv)
               }
 
               private fun resetTestButtons() {
                   btnTestRef?.text = "تست صدای ساعت جاری"
-                  btnTestRef?.setBackgroundColor(Color.parseColor("#334155"))
-                  btnStopAllRef?.visibility = android.view.View.GONE
+                  (btnTestRef?.background as? GradientDrawable)?.setColor(Color.parseColor("#1E293B"))
+                  btnStopAllRef?.visibility = View.GONE
               }
 
               override fun onPause() {
@@ -363,8 +509,8 @@ jobs:
                       try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
                       val p = getSharedPreferences("P", 0).edit()
                       when (req) {
-                          REQ_HOUR -> { p.putString("uri_hour", uri.toString()); Toast.makeText(this, "فایل جدید زنگ ساعت تنظیم شد", Toast.LENGTH_SHORT).show() }
-                          REQ_SALAWAT -> { p.putString("uri_salawat", uri.toString()); Toast.makeText(this, "فایل صلوات خاصه تنظیم شد", Toast.LENGTH_SHORT).show() }
+                          REQ_HOUR -> p.putString("uri_hour", uri.toString())
+                          REQ_SALAWAT -> p.putString("uri_salawat", uri.toString())
                       }
                       p.apply()
                       recreate()
@@ -384,15 +530,12 @@ jobs:
                           val m = cal.get(Calendar.MINUTE)
                           val p = c.getSharedPreferences("P", 0)
 
-                          // رأس ساعت ۸ صبح و ۸ شب: تک‌زنگ + صلوات خاصه
                           if (m in 0..4 && (h == 8 || h == 20) && p.getBoolean("salawat_8", true)) {
                               playSalawatSpecial(c) {}
                           } else if (!(p.getBoolean("q", true) && (h >= 23 || h < 7))) {
-                              // دقیقه ۳۰ (نیم‌ساعت)
                               if (m in 25..35) {
                                   if (p.getBoolean("half", true)) play(c, 1) {}
                               } else if (p.getBoolean("hour_enable", true)) {
-                                  // سر ساعت: بررسی تک‌زنگ یا به تعداد ساعت
                                   val isSingle = p.getBoolean("single_hourly_chime", false)
                                   val c12 = h % 12
                                   val rounds = if (isSingle) 1 else (if (c12 == 0) 12 else c12)
@@ -427,7 +570,6 @@ jobs:
                       mp = null
                   }
 
-                  // پخش ویژه ساعت ۸ و ۲۰: ابتدا یک تک‌زنگ سپس صلوات خاصه
                   fun playSalawatSpecial(c: Context, onFinish: (() -> Unit)? = null) {
                       stop()
                       if (isCall(c)) { onFinish?.invoke(); return }
@@ -438,7 +580,6 @@ jobs:
 
                       thread {
                           try {
-                              // ۱. پخش تک‌زنگ اول با صدای saat
                               val chimePlayer = if (uHour != null) {
                                   MediaPlayer.create(c, Uri.parse(uHour))
                               } else {
@@ -458,7 +599,6 @@ jobs:
                                   mp = null
                               }
 
-                              // ۲. پخش صلوات خاصه
                               if (isPlaying && !isCall(c)) {
                                   val salawatPlayer = if (uSalawat != null) {
                                       MediaPlayer.create(c, Uri.parse(uSalawat))
@@ -565,5 +705,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HaramClock-v4.0-FullFeatures-APK
+          name: HaramClock-v4.1-Glassmorphism-APK
           path: app/build/outputs/apk/debug/*.apk
