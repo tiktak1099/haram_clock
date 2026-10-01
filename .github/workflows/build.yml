@@ -30,23 +30,12 @@ jobs:
           mkdir -p app/src/main/res/drawable
           mkdir -p app/src/main/res/raw
 
-          echo "=== لیست تمام فایل‌های موجود در مخزن ==="
-          ls -la
+          # کپی دقیق فایل های صوتی آپلود شده به پوشه منابع اندروید
+          cp saat.mp3 app/src/main/res/raw/saat.mp3
+          cp salavat.mp3 app/src/main/res/raw/salavat.mp3
 
-          # کپی هوشمند فایل saat (با هر پسوند یا بدون پسوند و بدون حساسیت به حروف کوچک/بزرگ)
-          find . -maxdepth 2 -type f -iname "*saat*" ! -path "*/app/src/*" | head -n 1 | while read -r f; do
-            echo "فایل زنگ ساعت شناسایی شد: $f"
-            cp "$f" app/src/main/res/raw/saat.mp3
-          done
-
-          # کپی هوشمند فایل Salavat (با هر پسوند یا بدون پسوند و تبدیل به حروف کوچک استاندارد اندروید)
-          find . -maxdepth 2 -type f -iname "*salavat*" ! -path "*/app/src/*" | head -n 1 | while read -r f; do
-            echo "فایل صلوات خاصه شناسایی شد: $f"
-            cp "$f" app/src/main/res/raw/salavat.mp3
-          done
-
-          echo "=== فایل‌های منتقل شده به پوشه برنامه (res/raw) ==="
-          ls -la app/src/main/res/raw/
+          echo "بررسی وجود فایل‌ها درون res/raw:"
+          ls -lh app/src/main/res/raw/
 
           echo 'rootProject.name = "HourlyChimeApp"' > settings.gradle
           echo 'include ":app"' >> settings.gradle
@@ -74,8 +63,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 22
-                  versionName "3.3"
+                  versionCode 23
+                  versionName "3.4"
               }
               buildTypes { release { minifyEnabled false } }
               compileOptions {
@@ -179,7 +168,7 @@ jobs:
                   }
                   val ll = LinearLayout(this).apply { orientation = 1; gravity = Gravity.CENTER_HORIZONTAL; setPadding(30, 40, 30, 40) }
                   val t = TextView(this).apply { text = "ساعت حرم امام رضا (ع)"; textSize = 22f; setTextColor(Color.parseColor("#38BDF8")); typeface = Typeface.DEFAULT_BOLD; gravity = 1 }
-                  val st = TextView(this).apply { text = if (p.getBoolean("on", false)) "وضعیت: فعال (سر ساعت، نیم‌ساعت و ساعت ۸)" else "وضعیت: غیرفعال"; textSize = 14f; setTextColor(if (p.getBoolean("on", false)) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8")); gravity = 1; setPadding(0, 10, 0, 20) }
+                  val st = TextView(this).apply { text = if (p.getBoolean("on", false)) "وضعیت: فعال (سر ساعت، نیم‌‌ساعت و ساعت ۸)" else "وضعیت: غیرفعال"; textSize = 14f; setTextColor(if (p.getBoolean("on", false)) Color.parseColor("#4ADE80") else Color.parseColor("#94A3B8")); gravity = 1; setPadding(0, 10, 0, 20) }
 
                   val btnToggle = Button(this).apply {
                       val on = p.getBoolean("on", false)
@@ -225,16 +214,32 @@ jobs:
 
                   val btnFileHour = Button(this).apply {
                       val hasCustom = p.getString("uri_hour", null) != null
-                      text = if (hasCustom) "صدای زنگ: فایل انتخابی فعال است (تغییر)" else "صدای زنگ: فایل saat پیش‌فرض (تغییر)"
+                      text = if (hasCustom) "صدای زنگ: فایل شخصی گوشی (کلیک برای بازگشت به saat)" else "صدای زنگ: فایل saat پیش‌فرض داخلی"
                       setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#38BDF8"))
-                      setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ_HOUR) }
+                      setOnClickListener {
+                          if (hasCustom) {
+                              p.edit().remove("uri_hour").apply()
+                              Toast.makeText(this@MainActivity, "صدای پیش‌فرض saat فعال شد", Toast.LENGTH_SHORT).show()
+                              recreate()
+                          } else {
+                              startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ_HOUR)
+                          }
+                      }
                   }
 
                   val btnFileSalawat = Button(this).apply {
                       val hasCustom = p.getString("uri_salawat", null) != null
-                      text = if (hasCustom) "صدای ساعت ۸ و ۲۰: فایل انتخابی فعال است" else "صدای ساعت ۸ و ۲۰: نوای Salavat پیش‌فرض (تغییر)"
+                      text = if (hasCustom) "صدای ساعت ۸ و ۲۰: فایل شخصی گوشی (کلیک برای بازگشت به salavat)" else "صدای ساعت ۸ و ۲۰: صلوات خاصه پیش‌فرض داخلی"
                       setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#34D399"))
-                      setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ_SALAWAT) }
+                      setOnClickListener {
+                          if (hasCustom) {
+                              p.edit().remove("uri_salawat").apply()
+                              Toast.makeText(this@MainActivity, "صلوات خاصه پیش‌فرض فعال شد", Toast.LENGTH_SHORT).show()
+                              recreate()
+                          } else {
+                              startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ_SALAWAT)
+                          }
+                      }
                   }
 
                   val btnStopAll = Button(this).apply {
@@ -246,7 +251,6 @@ jobs:
                       setOnClickListener {
                           HourlyReceiver.stop()
                           resetTestButtons()
-                          Toast.makeText(this@MainActivity, "پخش صدا متوقف شد", Toast.LENGTH_SHORT).show()
                       }
                   }
 
@@ -333,8 +337,8 @@ jobs:
                       try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
                       val p = getSharedPreferences("P", 0).edit()
                       when (req) {
-                          REQ_HOUR -> { p.putString("uri_hour", uri.toString()); Toast.makeText(this, "فایل جدید زنگ ساعت تنظیم شد", Toast.LENGTH_SHORT).show() }
-                          REQ_SALAWAT -> { p.putString("uri_salawat", uri.toString()); Toast.makeText(this, "فایل صلوات خاصه تنظیم شد", Toast.LENGTH_SHORT).show() }
+                          REQ_HOUR -> p.putString("uri_hour", uri.toString())
+                          REQ_SALAWAT -> p.putString("uri_salawat", uri.toString())
                       }
                       p.apply()
                       recreate()
@@ -403,8 +407,8 @@ jobs:
                               val player = if (u != null) {
                                   MediaPlayer.create(c, Uri.parse(u))
                               } else {
-                                  val id = c.resources.getIdentifier("salavat", "raw", c.packageName)
-                                  if (id != 0) MediaPlayer.create(c, id) else null
+                                  // ارجاع مستقیم به فایل salavat درون APK
+                                  MediaPlayer.create(c, R.raw.salavat)
                               }
 
                               if (player != null) {
@@ -429,7 +433,6 @@ jobs:
                       val p = c.getSharedPreferences("P", 0)
                       val u = p.getString("uri_hour", null)
                       val g = p.getLong("gap", 1000L)
-                      val rawId = c.resources.getIdentifier("saat", "raw", c.packageName)
 
                       thread {
                           try {
@@ -437,9 +440,10 @@ jobs:
                                   if (!isPlaying || isCall(c)) break
                                   val player = if (u != null) {
                                       MediaPlayer.create(c, Uri.parse(u))
-                                  } else if (rawId != 0) {
-                                      MediaPlayer.create(c, rawId)
-                                  } else null
+                                  } else {
+                                      // ارجاع مستقیم به فایل saat درون APK
+                                      MediaPlayer.create(c, R.raw.saat)
+                                  }
 
                                   if (player != null) {
                                       mp = player
@@ -504,5 +508,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HaramClock-v3.3-FixedAudio-APK
+          name: HaramClock-v3.4-BuiltInAudio-APK
           path: app/build/outputs/apk/debug/*.apk
