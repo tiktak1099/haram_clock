@@ -30,9 +30,9 @@ jobs:
           mkdir -p app/src/main/res/drawable
           mkdir -p app/src/main/res/raw
 
-          # کپی فایل‌های صوتی موجود در مخزن
-          cp saat.mp3 app/src/main/res/raw/saat.mp3 2>/dev/null || cp hour.mp3 app/src/main/res/raw/saat.mp3 2>/dev/null || true
-          cp salavat.mp3 app/src/main/res/raw/salavat.mp3 2>/dev/null || true
+          # کپی هوشمند فایل های صوتی بدون توجه به حروف بزرگ یا کوچک
+          find . -maxdepth 1 -iname "*saat*" -o -iname "*hour*" | head -n 1 | xargs -I {} cp "{}" app/src/main/res/raw/saat.mp3 2>/dev/null || true
+          find . -maxdepth 1 -iname "*salavat*" -o -iname "*salavst*" | head -n 1 | xargs -I {} cp "{}" app/src/main/res/raw/salavat.mp3 2>/dev/null || true
 
           echo 'rootProject.name = "HourlyChimeApp"' > settings.gradle
           echo 'include ":app"' >> settings.gradle
@@ -60,8 +60,8 @@ jobs:
                   applicationId "com.example.hourlychime"
                   minSdk 23
                   targetSdk 34
-                  versionCode 19
-                  versionName "3.0"
+                  versionCode 20
+                  versionName "3.1"
               }
               buildTypes { release { minifyEnabled false } }
               compileOptions {
@@ -149,7 +149,6 @@ jobs:
           import android.widget.*
           import java.util.Calendar
           import kotlin.concurrent.thread
-          import kotlin.math.sin
 
           class MainActivity : Activity() {
               private val REQ_HOUR = 101
@@ -211,14 +210,14 @@ jobs:
 
                   val btnFileHour = Button(this).apply {
                       val hasCustom = p.getString("uri_hour", null) != null
-                      text = if (hasCustom) "صدای زنگ: فایل انتخابی فعال است (کلیک برای تغییر)" else "صدای زنگ: آهنگ saat پیش‌فرض (کلیک برای تغییر)"
+                      text = if (hasCustom) "صدای زنگ: فایل دلخواه تنظیم است (کلیک برای تغییر)" else "صدای زنگ: فایل صوتی پیش‌فرض saat (کلیک برای تغییر)"
                       setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#38BDF8"))
                       setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ_HOUR) }
                   }
 
                   val btnFileSalawat = Button(this).apply {
                       val hasCustom = p.getString("uri_salawat", null) != null
-                      text = if (hasCustom) "صدای ساعت ۸ و ۲۰: فایل انتخابی فعال است" else "صدای ساعت ۸ و ۲۰: آهنگ salavat پیش‌‌فرض"
+                      text = if (hasCustom) "صدای ساعت ۸ و ۲۰: فایل دلخواه فعال است" else "صدای ساعت ۸ و ۲۰: صلوات خاصه پیش‌فرض (کلیک برای تغییر)"
                       setBackgroundColor(Color.parseColor("#1E293B")); setTextColor(Color.parseColor("#34D399"))
                       setOnClickListener { startActivityForResult(Intent(Intent.ACTION_OPEN_DOCUMENT).apply { addCategory(Intent.CATEGORY_OPENABLE); type = "audio/*" }, REQ_SALAWAT) }
                   }
@@ -288,8 +287,8 @@ jobs:
                       try { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) } catch (_: Exception) {}
                       val p = getSharedPreferences("P", 0).edit()
                       when (req) {
-                          REQ_HOUR -> { p.putString("uri_hour", uri.toString()); Toast.makeText(this, "فایل جدید زنگ ساعت ذخیره شد", Toast.LENGTH_SHORT).show() }
-                          REQ_SALAWAT -> { p.putString("uri_salawat", uri.toString()); Toast.makeText(this, "فایل جدید صلوات خاصه ذخیره شد", Toast.LENGTH_SHORT).show() }
+                          REQ_HOUR -> { p.putString("uri_hour", uri.toString()); Toast.makeText(this, "فایل جدید زنگ ساعت تنظیم شد", Toast.LENGTH_SHORT).show() }
+                          REQ_SALAWAT -> { p.putString("uri_salawat", uri.toString()); Toast.makeText(this, "فایل صلوات خاصه تنظیم شد", Toast.LENGTH_SHORT).show() }
                       }
                       p.apply()
                       recreate()
@@ -300,10 +299,10 @@ jobs:
           class HourlyReceiver : BroadcastReceiver() {
               override fun onReceive(c: Context, i: Intent) {
                   val pm = c.getSystemService(Context.POWER_SERVICE) as PowerManager
-                  val wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "HaramClock:ChimeLock")
+                  val wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "HaramClock:Lock")
                   wl.acquire(60000L)
                   try {
-                      if (!isCallActive(c)) {
+                      if (!isCall(c)) {
                           val cal = Calendar.getInstance()
                           val h = cal.get(Calendar.HOUR_OF_DAY)
                           val m = cal.get(Calendar.MINUTE)
@@ -328,102 +327,85 @@ jobs:
 
               companion object {
                   @Volatile var isPlaying = false
-                  private var currentMp: MediaPlayer? = null
-                  private var currentTrack: AudioTrack? = null
+                  private var mp: MediaPlayer? = null
 
-                  private fun isCallActive(c: Context): Boolean {
+                  private fun isCall(c: Context): Boolean {
                       val am = c.getSystemService(Context.AUDIO_SERVICE) as? AudioManager ?: return false
-                      return am.mode == AudioManager.MODE_IN_CALL ||
-                             am.mode == AudioManager.MODE_IN_COMMUNICATION ||
-                             am.mode == AudioManager.MODE_RINGTONE
+                      return am.mode == AudioManager.MODE_IN_CALL || am.mode == AudioManager.MODE_IN_COMMUNICATION || am.mode == AudioManager.MODE_RINGTONE
                   }
 
                   fun stop() {
                       isPlaying = false
-                      try {
-                          currentMp?.let {
-                              if (it.isPlaying) it.stop()
-                              it.reset()
-                              it.release()
-                          }
-                      } catch (_: Exception) {}
-                      currentMp = null
-
-                      try {
-                          currentTrack?.let {
-                              it.stop()
-                              it.release()
-                          }
-                      } catch (_: Exception) {}
-                      currentTrack = null
+                      try { mp?.stop(); mp?.release() } catch (_: Exception) {}
+                      mp = null
                   }
 
                   fun playSalawat(c: Context) {
                       stop()
-                      if (isCallActive(c)) return
+                      if (isCall(c)) return
                       isPlaying = true
                       val p = c.getSharedPreferences("P", 0)
                       val u = p.getString("uri_salawat", null)
+                      thread {
+                          try {
+                              val player = if (u != null) {
+                                  MediaPlayer.create(c, Uri.parse(u))
+                              } else {
+                                  val id = c.resources.getIdentifier("salawat", "raw", c.packageName)
+                                  if (id != 0) MediaPlayer.create(c, id) else null
+                              }
+                              if (player != null) {
+                                  mp = player
+                                  player.start()
+                                  while (player.isPlaying && isPlaying && !isCall(c)) Thread.sleep(150)
+                                  player.release()
+                                  mp = null
+                              }
+                          } catch (_: Exception) {}
+                          finally { isPlaying = false }
+                      }
+                  }
+
+                  fun play(c: Context, r: Int, onFinish: (() -> Unit)? = null) {
+                      stop()
+                      if (isCall(c)) { isPlaying = false; onFinish?.invoke(); return }
+                      isPlaying = true
+                      val p = c.getSharedPreferences("P", 0)
+                      val u = p.getString("uri_hour", null)
                       val g = p.getLong("gap", 1000L)
-                      val rawSaatId = c.resources.getIdentifier("saat", "raw", c.packageName)
+                      val rawId = c.resources.getIdentifier("saat", "raw", c.packageName)
 
                       thread {
                           try {
                               for (idx in 0 until r) {
-                                  if (!isPlaying || isCallActive(c)) break
+                                  if (!isPlaying || isCall(c)) break
+                                  val player = if (u != null) {
+                                      MediaPlayer.create(c, Uri.parse(u))
+                                  } else if (rawId != 0) {
+                                      MediaPlayer.create(c, rawId)
+                                  } else null
 
-                                  var played = false
-                                  try {
-                                      val mp = if (u != null) {
-                                          MediaPlayer.create(c, Uri.parse(u))
-                                      } else if (rawSaatId != 0) {
-                                          MediaPlayer.create(c, rawSaatId)
-                                      } else null
-
-                                      if (mp != null) {
-                                          currentMp = mp
-                                          mp.start()
-                                          val dur = mp.duration.toLong()
-                                          var waited = 0L
-                                          while (waited < dur + g && isPlaying) {
-                                              if (isCallActive(c)) break
-                                              Thread.sleep(100)
-                                              waited += 100
-                                          }
-                                          mp.release()
-                                          currentMp = null
-                                          played = true
+                                  if (player != null) {
+                                      mp = player
+                                      player.start()
+                                      val dur = player.duration.toLong()
+                                      var waited = 0L
+                                      while (waited < dur + g && isPlaying && !isCall(c)) {
+                                          Thread.sleep(100)
+                                          waited += 100
                                       }
-                                  } catch (_: Exception) {}
-
-                                  if (!played && isPlaying && !isCallActive(c)) {
-                                      sndTone(587.33, g)
+                                      player.release()
+                                      mp = null
+                                  } else {
+                                      Thread.sleep(1000)
                                   }
                               }
-                          } finally {
+                          } catch (_: Exception) {}
+                          finally {
                               isPlaying = false
                               onFinish?.invoke()
                           }
                       }
-                  }
-
-                  private fun sndTone(f: Double, g: Long) {
-                      try {
-                          val sr = 44100; val dur = 0.8; val n = (dur * sr).toInt(); val b = ShortArray(n)
-                          for (i in 0 until n) {
-                              val t = i.toDouble() / sr
-                              b[i] = (sin(2 * Math.PI * f * t) * Math.exp(-3.5 * t) * 32767).toInt().toShort()
-                          }
-                          val tr = AudioTrack.Builder()
-                              .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).build())
-                              .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(sr).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-                              .setBufferSizeInBytes(n * 2).setTransferMode(AudioTrack.MODE_STATIC).build()
-                          currentTrack = tr; tr.write(b, 0, n); tr.play()
-                          var waited = 0L; val totalWait = (dur * 1000).toLong() + g
-                          while (waited < totalWait && isPlaying) { Thread.sleep(100); waited += 100 }
-                          try { tr.stop(); tr.release() } catch (_: Exception) {}
-                          currentTrack = null
-                      } catch (_: Exception) {}
                   }
 
                   fun sch(c: Context) {
@@ -466,5 +448,5 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: HaramClock-v3.0-APK
+          name: HaramClock-v3.1-APK
           path: app/build/outputs/apk/debug/*.apk
